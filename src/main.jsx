@@ -1,11 +1,51 @@
 
 import { teams } from "./data/teams.js";
 import { players } from "./data/players.js";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 
 const joueurs = players;
+
+function normaliser(nom) {
+  return nom
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+}
+
+function PhotoJoueur({ joueur, photos, taille = 55 }) {
+  const [erreur, setErreur] = useState(false);
+  const photo = photos[normaliser(joueur.nom)];
+
+  return (
+    <div style={{
+      width: taille,
+      height: taille,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0
+    }}>
+      {photo && !erreur ? (
+        <img
+          src={photo}
+          alt={joueur.nom}
+          onError={() => setErreur(true)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            borderRadius: "10px"
+          }}
+        />
+      ) : (
+        <span style={{ fontSize: taille * 0.65 }}>🏒</span>
+      )}
+    </div>
+  );
+}
 
 function App() {
   const [onglet, setOnglet] = useState("Accueil");
@@ -15,6 +55,61 @@ function App() {
   const [joueurSelectionne, setJoueurSelectionne] = useState(null);
   const [saison, setSaison] = useState("2026-2027");
   const [message, setMessage] = useState("Bienvenue dans ton bureau de DG!");
+  const [photos, setPhotos] = useState({});
+  const [chargementPhotos, setChargementPhotos] = useState(true);
+
+  useEffect(() => {
+    let actif = true;
+
+    async function chargerPhotos() {
+      const saisons = ["20262027", "current"];
+
+      for (const periode of saisons) {
+        try {
+          const reponse = await fetch(
+            `https://api-web.nhle.com/v1/roster/MTL/${periode}`
+          );
+
+          if (!reponse.ok) continue;
+
+          const donnees = await reponse.json();
+          const liste = [
+            ...(donnees.forwards || []),
+            ...(donnees.defensemen || []),
+            ...(donnees.goalies || [])
+          ];
+
+          const nouvellesPhotos = {};
+
+          liste.forEach(j => {
+            const prenom = j.firstName?.default || "";
+            const nom = j.lastName?.default || "";
+            const cle = normaliser(`${prenom}${nom}`);
+
+            if (j.headshot) {
+              nouvellesPhotos[cle] = j.headshot;
+            }
+          });
+
+          if (actif && Object.keys(nouvellesPhotos).length > 0) {
+            setPhotos(nouvellesPhotos);
+            setChargementPhotos(false);
+            return;
+          }
+        } catch (erreur) {
+          console.error("Erreur de chargement des photos NHL", erreur);
+        }
+      }
+
+      if (actif) setChargementPhotos(false);
+    }
+
+    chargerPhotos();
+
+    return () => {
+      actif = false;
+    };
+  }, []);
 
   function simulerMatch() {
     if (victoires + defaites >= 82) {
@@ -31,26 +126,40 @@ function App() {
     }
   }
 
-  function PhotoJoueur({ joueur }) {
-    const [erreur, setErreur] = useState(false);
-
+  function afficherJoueurs(liste) {
     return (
-      <div style={{ textAlign: "center" }}>
-        {!erreur && joueur.photo ? (
-          <img
-            src={joueur.photo}
-            alt={joueur.nom}
-            onError={() => setErreur(true)}
-            style={{
-              width: "180px",
-              height: "180px",
-              objectFit: "contain",
-              borderRadius: "12px"
-            }}
-          />
-        ) : (
-          <div style={{ fontSize: "90px" }}>🏒</div>
-        )}
+      <div className="table">
+        <div className="ligne entete">
+          <span>Joueur</span>
+          <span>#</span>
+          <span>Pos.</span>
+          <span>Âge</span>
+          <span>OVR</span>
+          <span>Salaire</span>
+        </div>
+
+        {liste.map(j => (
+          <div
+            className="ligne"
+            key={j.nom}
+            onClick={() => setJoueurSelectionne(j)}
+            style={{ cursor: "pointer" }}
+          >
+            <span style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              <PhotoJoueur joueur={j} photos={photos} taille={38} />
+              <b>{j.nom}</b>
+            </span>
+            <span>{j.numero}</span>
+            <span>{j.pos}</span>
+            <span>{j.age}</span>
+            <b>{j.ovr}</b>
+            <span>{j.salaire} M$</span>
+          </div>
+        ))}
       </div>
     );
   }
@@ -59,7 +168,11 @@ function App() {
     if (joueurSelectionne) {
       return (
         <section className="panel">
-          <PhotoJoueur joueur={joueurSelectionne} />
+          <PhotoJoueur
+            joueur={joueurSelectionne}
+            photos={photos}
+            taille={180}
+          />
 
           <div style={{ textAlign: "center" }}>
             <h2>{joueurSelectionne.nom}</h2>
@@ -70,22 +183,18 @@ function App() {
             <span>Équipe</span>
             <b>{joueurSelectionne.equipe}</b>
           </div>
-
           <div className="stat">
             <span>Position</span>
             <b>{joueurSelectionne.pos}</b>
           </div>
-
           <div className="stat">
             <span>Âge</span>
             <b>{joueurSelectionne.age} ans</b>
           </div>
-
           <div className="stat">
             <span>Note générale</span>
             <b>{joueurSelectionne.ovr} OVR</b>
           </div>
-
           <div className="stat">
             <span>Salaire</span>
             <b>{joueurSelectionne.salaire} M$</b>
@@ -104,45 +213,18 @@ function App() {
       const attaquants = joueursEquipe.filter(j =>
         ["C", "AG", "AD", "C/AG"].includes(j.pos)
       );
-
       const defenseurs = joueursEquipe.filter(j => j.pos === "D");
       const gardiens = joueursEquipe.filter(j => j.pos === "G");
-
-      function afficherJoueurs(liste) {
-        return (
-          <div className="table">
-            <div className="ligne entete">
-              <span>Joueur</span>
-              <span>#</span>
-              <span>Pos.</span>
-              <span>Âge</span>
-              <span>OVR</span>
-              <span>Salaire</span>
-            </div>
-
-            {liste.map(j => (
-              <div
-                className="ligne"
-                key={j.nom}
-                onClick={() => setJoueurSelectionne(j)}
-                style={{ cursor: "pointer" }}
-              >
-                <b>{j.nom}</b>
-                <span>{j.numero}</span>
-                <span>{j.pos}</span>
-                <span>{j.age}</span>
-                <b>{j.ovr}</b>
-                <span>{j.salaire} M$</span>
-              </div>
-            ))}
-          </div>
-        );
-      }
 
       return (
         <section className="panel">
           <h2>Effectif - {equipe}</h2>
           <p>{joueursEquipe.length} joueurs</p>
+          <p>
+            {chargementPhotos
+              ? "Chargement des portraits NHL..."
+              : "Portraits NHL chargés lorsque disponibles."}
+          </p>
 
           <h3>🏒 Attaquants ({attaquants.length})</h3>
           {afficherJoueurs(attaquants)}
@@ -173,17 +255,14 @@ function App() {
       return (
         <section className="panel">
           <h2>Finances de la franchise</h2>
-
           <div className="stat">
             <span>Plafond salarial</span>
             <b>À configurer</b>
           </div>
-
           <div className="stat">
             <span>Budget de l'équipe</span>
             <b>À configurer</b>
           </div>
-
           <p>La gestion financière complète sera ajoutée prochainement.</p>
         </section>
       );
@@ -193,17 +272,14 @@ function App() {
       return (
         <section className="panel">
           <h2>Saison {saison}</h2>
-
           <div className="stat">
             <span>Matchs joués</span>
             <b>{victoires + defaites} / 82</b>
           </div>
-
           <div className="stat">
             <span>Victoires</span>
             <b>{victoires}</b>
           </div>
-
           <div className="stat">
             <span>Défaites</span>
             <b>{defaites}</b>
@@ -232,12 +308,10 @@ function App() {
             <small>VICTOIRES</small>
             <strong>{victoires}</strong>
           </div>
-
           <div>
             <small>DÉFAITES</small>
             <strong>{defaites}</strong>
           </div>
-
           <div>
             <small>MATCHS JOUÉS</small>
             <strong>{victoires + defaites}/82</strong>
@@ -264,7 +338,6 @@ function App() {
 
       <section className="hero">
         <p>À TOI DE BÂTIR UNE DYNASTIE</p>
-
         <h1>
           DEVENEZ LE MAÎTRE<br />
           DE VOTRE FRANCHISE.
