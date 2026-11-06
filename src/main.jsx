@@ -31,23 +31,11 @@ function App() {
   }
 
   function contenu() {
-    <h2>Ton effectif ({joueurs.length} joueurs au total)</h2>
-<p>Joueurs de cette équipe : {joueurs.filter(j => j.equipe === equipe).length}</p>
-      return <section className="panel">
-        <h2>Ton effectif</h2>
-        <div className="table">
-          <div className="ligne entete">
-            <span>Joueur</span><span>Pos.</span><span>Âge</span>
-            <span>OVR</span><span>Salaire</span>
-          </div>
-          {joueurs.filter(j => j.equipe === equipe).map(j => ( <div className="ligne" key={j.nom}>
-            <b>{j.nom}</b><span>{j.pos}</span><span>{j.age}</span>
-            <b>{j.ovr}</b><span>{j.salaire} M$</span>
-          </div>)}
-        </div>
-        <p className="note">Effectif de démonstration à compléter et à vérifier.</p>
-      </section>;
-    }
+  function contenu() {
+  if (onglet === "Effectif") {
+    return <section className="panel">
+      <h2>Ton effectif ({joueurs.length} joueurs au total)</h2>
+      <p>Joueurs de cette équipe : {joueurs.filter(j => j.equipe === equipe).length}</p>
 
     if (onglet === "Échanges") {
       return <section className="panel">
