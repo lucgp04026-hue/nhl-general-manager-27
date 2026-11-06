@@ -33,15 +33,29 @@ function App() {
 
   function contenu() {
 
-    // FICHE INDIVIDUELLE DU JOUEUR
+    // FICHE DU JOUEUR
     if (joueurSelectionne) {
       return (
         <section className="panel">
-          <h2>{joueurSelectionne.nom}</h2>
-          <div className="stat">
-  <span>Numéro de chandail</span>
-  <b>#{joueurSelectionne.numero || "À définir"}</b>
-</div>
+          <div style={{ textAlign: "center" }}>
+            {joueurSelectionne.photo ? (
+              <img
+                src={joueurSelectionne.photo}
+                alt={joueurSelectionne.nom}
+                style={{
+                  width: "180px",
+                  height: "180px",
+                  objectFit: "contain",
+                  borderRadius: "12px"
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: "90px" }}>🏒</div>
+            )}
+
+            <h2>{joueurSelectionne.nom}</h2>
+            <h3>#{joueurSelectionne.numero}</h3>
+          </div>
 
           <div className="stat">
             <span>Équipe</span>
@@ -91,6 +105,7 @@ function App() {
           <div className="table">
             <div className="ligne entete">
               <span>Joueur</span>
+              <span>#</span>
               <span>Pos.</span>
               <span>Âge</span>
               <span>OVR</span>
@@ -105,6 +120,7 @@ function App() {
                 style={{ cursor: "pointer" }}
               >
                 <b>{j.nom}</b>
+                <span>{j.numero}</span>
                 <span>{j.pos}</span>
                 <span>{j.age}</span>
                 <b>{j.ovr}</b>
@@ -118,6 +134,7 @@ function App() {
       return (
         <section className="panel">
           <h2>Effectif - {equipe}</h2>
+          <p>{joueursEquipe.length} joueurs</p>
 
           <h3>🏒 Attaquants ({attaquants.length})</h3>
           {afficherJoueurs(attaquants)}
@@ -150,17 +167,14 @@ function App() {
       return (
         <section className="panel">
           <h2>Finances de la franchise</h2>
-
           <div className="stat">
             <span>Plafond salarial</span>
             <b>À configurer</b>
           </div>
-
           <div className="stat">
             <span>Budget de l'équipe</span>
             <b>À configurer</b>
           </div>
-
           <p>La gestion financière complète sera ajoutée prochainement.</p>
         </section>
       );
@@ -211,12 +225,10 @@ function App() {
             <small>VICTOIRES</small>
             <strong>{victoires}</strong>
           </div>
-
           <div>
             <small>DÉFAITES</small>
             <strong>{defaites}</strong>
           </div>
-
           <div>
             <small>MATCHS JOUÉS</small>
             <strong>{victoires + defaites}/82</strong>
@@ -243,7 +255,6 @@ function App() {
 
       <section className="hero">
         <p>À TOI DE BÂTIR UNE DYNASTIE</p>
-
         <h1>
           DEVENEZ LE MAÎTRE<br />
           DE VOTRE FRANCHISE.
