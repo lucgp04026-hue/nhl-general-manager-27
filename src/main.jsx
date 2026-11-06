@@ -34,7 +34,6 @@ function App() {
 
   const [joueurEchange1, setJoueurEchange1] = useState("");
   const [joueurEchange2, setJoueurEchange2] = useState("");
-
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -66,9 +65,7 @@ function App() {
           setEffectif(preparerJoueurs(players));
         }
       } finally {
-        if (actif) {
-          setChargement(false);
-        }
+        if (actif) setChargement(false);
       }
     }
 
@@ -84,11 +81,10 @@ function App() {
   );
 
   const totalMasseSalariale = joueursEquipe.reduce(
-    (total, joueur) => total + (Number(joueur.salaire) || 0),
+    (total, joueur) =>
+      total + (Number(joueur.salaire) || 0),
     0
   );
-
-  const totalJoueurs = joueursEquipe.length;
 
   const styleBouton = {
     padding: "11px 18px",
@@ -117,6 +113,60 @@ function App() {
     maxWidth: "100%"
   };
 
+  // Classe les joueurs selon leur position.
+  function categoriePosition(position) {
+    const pos = String(position || "")
+      .toUpperCase()
+      .trim();
+
+    if (["G", "GK", "GB", "GOALIE"].includes(pos)) {
+      return "gardiens";
+    }
+
+    if (
+      ["D", "LD", "RD", "DEF", "DEFENSE"].includes(pos)
+    ) {
+      return "defenseurs";
+    }
+
+    return "attaquants";
+  }
+
+  function trierAttaquants(liste) {
+    const ordre = {
+      C: 1,
+      CENTER: 1,
+      AG: 2,
+      L: 2,
+      LW: 2,
+      A: 2,
+      AD: 3,
+      R: 3,
+      RW: 3
+    };
+
+    return [...liste].sort((a, b) => {
+      const posA = String(a.pos || "").toUpperCase();
+      const posB = String(b.pos || "").toUpperCase();
+
+      return (ordre[posA] || 4) - (ordre[posB] || 4);
+    });
+  }
+
+  const attaquants = trierAttaquants(
+    joueursEquipe.filter(
+      (joueur) => categoriePosition(joueur.pos) === "attaquants"
+    )
+  );
+
+  const defenseurs = joueursEquipe.filter(
+    (joueur) => categoriePosition(joueur.pos) === "defenseurs"
+  );
+
+  const gardiens = joueursEquipe.filter(
+    (joueur) => categoriePosition(joueur.pos) === "gardiens"
+  );
+
   function simulerMatch() {
     const resultat = Math.random();
 
@@ -144,7 +194,6 @@ function App() {
     );
 
     setSaison((ancienneSaison) => ancienneSaison + 1);
-
     setVictoires(0);
     setDefaites(0);
     setDefaitesProlongation(0);
@@ -159,7 +208,7 @@ function App() {
     }
 
     if (joueurEchange1 === joueurEchange2) {
-      setMessage("Tu dois sélectionner deux joueurs différents.");
+      setMessage("Sélectionne deux joueurs différents.");
       return;
     }
 
@@ -175,7 +224,7 @@ function App() {
     }
 
     if (joueur1.equipe === joueur2.equipe) {
-      setMessage("Ces deux joueurs appartiennent à la même équipe.");
+      setMessage("Les joueurs doivent appartenir à deux équipes différentes.");
       return;
     }
 
@@ -192,7 +241,6 @@ function App() {
     };
 
     setEffectif(nouvelEffectif);
-
     setJoueurEchange1("");
     setJoueurEchange2("");
 
@@ -253,7 +301,10 @@ function App() {
 
   function afficherJoueur(joueur, index) {
     return (
-      <div key={joueur.idNhl || joueur.nom + index} style={styleCarte}>
+      <div
+        key={joueur.idNhl || joueur.nom + index}
+        style={styleCarte}
+      >
         <div
           style={{
             display: "flex",
@@ -271,7 +322,8 @@ function App() {
             </h3>
 
             <p style={{ margin: "4px 0" }}>
-              {joueur.pos || "Position inconnue"} · {joueur.age || "?"} ans
+              {joueur.pos || "Position inconnue"} ·{" "}
+              {joueur.age || "?"} ans
             </p>
 
             <p style={{ margin: "4px 0" }}>
@@ -308,7 +360,10 @@ function App() {
           }}
         >
           <span>
-            Potentiel : <strong>{joueur.potentiel ?? joueur.ovr ?? 75}</strong>
+            Potentiel :{" "}
+            <strong>
+              {joueur.potentiel ?? joueur.ovr ?? 75}
+            </strong>
           </span>
 
           <span>
@@ -323,8 +378,38 @@ function App() {
 
         {joueur.contratDisponible && (
           <p style={{ marginBottom: 0 }}>
-            Contrat : {joueur.finContrat || joueur.anneeFin || "Données disponibles"}
+            Contrat :{" "}
+            {joueur.finContrat ||
+              joueur.anneeFin ||
+              "Données disponibles"}
           </p>
+        )}
+      </div>
+    );
+  }
+
+  function afficherSection(titre, liste, emoji) {
+    return (
+      <div style={{ marginTop: "25px" }}>
+        <h3
+          style={{
+            background: "#26394e",
+            padding: "13px",
+            borderRadius: "9px",
+            borderLeft: "5px solid #328bd1"
+          }}
+        >
+          {emoji} {titre} ({liste.length})
+        </h3>
+
+        {liste.length === 0 ? (
+          <p style={{ color: "#a9c5df" }}>
+            Aucun joueur dans cette catégorie.
+          </p>
+        ) : (
+          liste.map((joueur) =>
+            afficherJoueur(joueur, effectif.indexOf(joueur))
+          )
         )}
       </div>
     );
@@ -369,7 +454,8 @@ function App() {
               }}
               style={{
                 ...styleBouton,
-                background: onglet === nom ? "#2879c7" : "#26394e"
+                background:
+                  onglet === nom ? "#2879c7" : "#26394e"
               }}
             >
               {nom}
@@ -417,7 +503,7 @@ function App() {
               Division : {equipeSelectionnee.division}
             </p>
 
-            <p>Joueurs : {totalJoueurs}</p>
+            <p>Joueurs : {joueursEquipe.length}</p>
 
             <p>
               Masse salariale :{" "}
@@ -444,20 +530,12 @@ function App() {
               </option>
             ))}
           </select>
-
-          <p style={{ color: "#a9c5df" }}>
-            Choisis ton équipe pour consulter son effectif et ses finances.
-          </p>
         </section>
       )}
 
       {onglet === "Effectif" && (
         <section>
           <h2>Effectif - {equipeSelectionnee.name}</h2>
-
-          <p>
-            {joueursEquipe.length} joueur(s) dans l'équipe
-          </p>
 
           <select
             style={styleSelect}
@@ -477,13 +555,13 @@ function App() {
             ))}
           </select>
 
-          {joueursEquipe.length === 0 && (
-            <p>Aucun joueur trouvé pour cette équipe.</p>
-          )}
+          <p>
+            Total : {joueursEquipe.length} joueurs
+          </p>
 
-          {joueursEquipe.map((joueur) =>
-            afficherJoueur(joueur, effectif.indexOf(joueur))
-          )}
+          {afficherSection("ATTAQUANTS", attaquants, "🏒")}
+          {afficherSection("DÉFENSEURS", defenseurs, "🛡️")}
+          {afficherSection("GARDIENS", gardiens, "🥅")}
         </section>
       )}
 
@@ -540,7 +618,9 @@ function App() {
 
       {onglet === "Saison" && (
         <section>
-          <h2>Saison {saison}-{String(saison + 1).slice(-2)}</h2>
+          <h2>
+            Saison {saison}-{String(saison + 1).slice(-2)}
+          </h2>
 
           <div style={styleCarte}>
             <h3>Résultats de la saison</h3>
@@ -592,9 +672,7 @@ function App() {
           <div style={styleCarte}>
             <h3>Masse salariale</h3>
 
-            <p>
-              Joueurs : {totalJoueurs}
-            </p>
+            <p>Joueurs : {joueursEquipe.length}</p>
 
             <h2>
               {totalMasseSalariale.toFixed(2)} M$
