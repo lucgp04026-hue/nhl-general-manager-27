@@ -31,89 +31,103 @@ function App() {
     }
   }
 
-  if (joueurSelectionne) {
-  return (
-    <section className="panel">
-      <h2>{joueurSelectionne.nom}</h2>
-      <div className="stat">
-        <span>Position</span>
-        <b>{joueurSelectionne.pos}</b>
-      </div>
-      <div className="stat">
-        <span>Âge</span>
-        <b>{joueurSelectionne.age} ans</b>
-      </div>
-      <div className="stat">
-        <span>Note générale</span>
-        <b>{joueurSelectionne.ovr} OVR</b>
-      </div>
-      <div className="stat">
-        <span>Salaire</span>
-        <b>{joueurSelectionne.salaire} M$</b>
-      </div>
-      <button onClick={() => setJoueurSelectionne(null)}>
-        Retour à l'effectif
-      </button>
-    </section>
-  );
-  }
-    
-if (onglet === "Effectif") {
-  const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
+  function contenu() {
 
-  const attaquants = joueursEquipe.filter(j =>
-    ["C", "AG", "AD", "C/AG"].includes(j.pos)
-  );
+    // FICHE INDIVIDUELLE DU JOUEUR
+    if (joueurSelectionne) {
+      return (
+        <section className="panel">
+          <h2>{joueurSelectionne.nom}</h2>
 
-  const defenseurs = joueursEquipe.filter(j => j.pos === "D");
-  const gardiens = joueursEquipe.filter(j => j.pos === "G");
-
-  function afficherJoueurs(liste) {
-    return (
-      <div className="table">
-        <div className="ligne entete">
-          <span>Joueur</span>
-          <span>Pos.</span>
-          <span>Âge</span>
-          <span>OVR</span>
-          <span>Salaire</span>
-        </div>
-
-        {liste.map(j => (
-          <div
-  className="ligne"
-  key={j.nom}
-  onClick={() => setJoueurSelectionne(j)}
-  style={{ cursor: "pointer" }}
->
-            <b>{j.nom}</b>
-            <span>{j.pos}</span>
-            <span>{j.age}</span>
-            <b>{j.ovr}</b>
-            <span>{j.salaire} M$</span>
+          <div className="stat">
+            <span>Équipe</span>
+            <b>{joueurSelectionne.equipe}</b>
           </div>
-        ))}
-      </div>
-    );
-  }
 
-  return (
-    <section className="panel">
-      <h2>Effectif - {equipe}</h2>
+          <div className="stat">
+            <span>Position</span>
+            <b>{joueurSelectionne.pos}</b>
+          </div>
 
-      <h3>🏒 Attaquants ({attaquants.length})</h3>
-      {afficherJoueurs(attaquants)}
+          <div className="stat">
+            <span>Âge</span>
+            <b>{joueurSelectionne.age} ans</b>
+          </div>
 
-      <h3>🛡️ Défenseurs ({defenseurs.length})</h3>
-      {afficherJoueurs(defenseurs)}
+          <div className="stat">
+            <span>Note générale</span>
+            <b>{joueurSelectionne.ovr} OVR</b>
+          </div>
 
-      <h3>🥅 Gardiens ({gardiens.length})</h3>
-      {afficherJoueurs(gardiens)}
-    </section>
-  );
-}
+          <div className="stat">
+            <span>Salaire</span>
+            <b>{joueurSelectionne.salaire} M$</b>
+          </div>
 
+          <button onClick={() => setJoueurSelectionne(null)}>
+            Retour à l'effectif
+          </button>
+        </section>
+      );
+    }
 
+    // EFFECTIF
+    if (onglet === "Effectif") {
+      const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
+
+      const attaquants = joueursEquipe.filter(j =>
+        ["C", "AG", "AD", "C/AG"].includes(j.pos)
+      );
+
+      const defenseurs = joueursEquipe.filter(j => j.pos === "D");
+      const gardiens = joueursEquipe.filter(j => j.pos === "G");
+
+      function afficherJoueurs(liste) {
+        return (
+          <div className="table">
+            <div className="ligne entete">
+              <span>Joueur</span>
+              <span>Pos.</span>
+              <span>Âge</span>
+              <span>OVR</span>
+              <span>Salaire</span>
+            </div>
+
+            {liste.map(j => (
+              <div
+                className="ligne"
+                key={j.nom}
+                onClick={() => setJoueurSelectionne(j)}
+                style={{ cursor: "pointer" }}
+              >
+                <b>{j.nom}</b>
+                <span>{j.pos}</span>
+                <span>{j.age}</span>
+                <b>{j.ovr}</b>
+                <span>{j.salaire} M$</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      return (
+        <section className="panel">
+          <h2>Effectif - {equipe}</h2>
+
+          <h3>🏒 Attaquants ({attaquants.length})</h3>
+          {afficherJoueurs(attaquants)}
+
+          <h3>🛡️ Défenseurs ({defenseurs.length})</h3>
+          {afficherJoueurs(defenseurs)}
+
+          <h3>🥅 Gardiens ({gardiens.length})</h3>
+          {afficherJoueurs(gardiens)}
+        </section>
+      );
+    }
+
+    // ÉCHANGES
     if (onglet === "Échanges") {
       return (
         <section className="panel">
@@ -127,35 +141,43 @@ if (onglet === "Effectif") {
       );
     }
 
+    // FINANCES
     if (onglet === "Finances") {
       return (
         <section className="panel">
           <h2>Finances de la franchise</h2>
+
           <div className="stat">
             <span>Plafond salarial</span>
             <b>À configurer</b>
           </div>
+
           <div className="stat">
             <span>Budget de l'équipe</span>
             <b>À configurer</b>
           </div>
+
           <p>La gestion financière complète sera ajoutée prochainement.</p>
         </section>
       );
     }
 
+    // SAISON
     if (onglet === "Saison") {
       return (
         <section className="panel">
           <h2>Saison {saison}</h2>
+
           <div className="stat">
             <span>Matchs joués</span>
             <b>{victoires + defaites} / 82</b>
           </div>
+
           <div className="stat">
             <span>Victoires</span>
             <b>{victoires}</b>
           </div>
+
           <div className="stat">
             <span>Défaites</span>
             <b>{defaites}</b>
@@ -173,6 +195,7 @@ if (onglet === "Effectif") {
       );
     }
 
+    // ACCUEIL
     return (
       <section className="panel">
         <p className="eyebrow">TON BUREAU DE DIRECTEUR GÉNÉRAL</p>
@@ -184,10 +207,12 @@ if (onglet === "Effectif") {
             <small>VICTOIRES</small>
             <strong>{victoires}</strong>
           </div>
+
           <div>
             <small>DÉFAITES</small>
             <strong>{defaites}</strong>
           </div>
+
           <div>
             <small>MATCHS JOUÉS</small>
             <strong>{victoires + defaites}/82</strong>
@@ -195,9 +220,11 @@ if (onglet === "Effectif") {
         </div>
 
         <p className="message">{message}</p>
+
         <button onClick={simulerMatch}>
           Simuler le prochain match
         </button>
+
         <p className="note">Objectif : remporter la Coupe Stanley!</p>
       </section>
     );
@@ -212,6 +239,7 @@ if (onglet === "Effectif") {
 
       <section className="hero">
         <p>À TOI DE BÂTIR UNE DYNASTIE</p>
+
         <h1>
           DEVENEZ LE MAÎTRE<br />
           DE VOTRE FRANCHISE.
@@ -219,7 +247,10 @@ if (onglet === "Effectif") {
 
         <select
           value={equipe}
-          onChange={e => setEquipe(e.target.value)}
+          onChange={e => {
+            setEquipe(e.target.value);
+            setJoueurSelectionne(null);
+          }}
         >
           {teams.map(t => (
             <option key={t.id} value={t.name}>
@@ -233,7 +264,10 @@ if (onglet === "Effectif") {
         {["Accueil", "Effectif", "Échanges", "Saison", "Finances"].map(t => (
           <button
             className={onglet === t ? "active" : ""}
-            onClick={() => setOnglet(t)}
+            onClick={() => {
+              setOnglet(t);
+              setJoueurSelectionne(null);
+            }}
             key={t}
           >
             {t}
