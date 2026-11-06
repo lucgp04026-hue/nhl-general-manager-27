@@ -30,33 +30,57 @@ function App() {
     }
   }
 
-  function contenu() {
+  
+function contenu() {
   if (onglet === "Effectif") {
     return (
       <section className="panel">
         <h2>Ton effectif ({joueurs.length} joueurs au total)</h2>
         <p>Joueurs de cette équipe : {joueurs.filter(j => j.equipe === equipe).length}</p>
         <div className="table">
+          <div className="ligne entete">
+            <span>Joueur</span><span>Pos.</span><span>Âge</span>
+            <span>OVR</span><span>Salaire</span>
+          </div>
+          {joueurs.filter(j => j.equipe === equipe).map(j => (
+            <div className="ligne" key={j.nom}>
+              <b>{j.nom}</b>
+              <span>{j.pos}</span>
+              <span>{j.age}</span>
+              <b>{j.ovr}</b>
+              <span>{j.salaire} M$</span>
+            </div>
+          ))}
+        </div>
+        <p className="note">Effectif de démonstration à compléter et à vérifier.</p>
+      </section>
+    );
+  }
 
-    if (onglet === "Échanges") {
-      return <section className="panel">
+  if (onglet === "Échanges") {
+    return (
+      <section className="panel">
         <h2>Centre des échanges</h2>
         <p>Prépare tes offres et améliore ton équipe.</p>
-        <div className="placeholder">🤝<br/>Le marché des échanges arrive bientôt!</div>
-      </section>;
-    }
+        <div className="placeholder">🤝<br />Le marché des échanges arrive bientôt!</div>
+      </section>
+    );
+  }
 
-    if (onglet === "Finances") {
-      return <section className="panel">
+  if (onglet === "Finances") {
+    return (
+      <section className="panel">
         <h2>Finances de la franchise</h2>
         <div className="stat"><span>Plafond salarial</span><b>À configurer</b></div>
         <div className="stat"><span>Budget de l'équipe</span><b>À configurer</b></div>
         <p>La gestion financière complète sera ajoutée prochainement.</p>
-      </section>;
-    }
+      </section>
+    );
+  }
 
-    if (onglet === "Saison") {
-      return <section className="panel">
+  if (onglet === "Saison") {
+    return (
+      <section className="panel">
         <h2>Saison {saison}</h2>
         <div className="stat"><span>Matchs joués</span><b>{victoires + defaites} / 82</b></div>
         <div className="stat"><span>Victoires</span><b>{victoires}</b></div>
@@ -67,10 +91,12 @@ function App() {
           setDefaites(0);
           setMessage("Nouvelle saison commencée!");
         }}>Nouvelle saison</button>
-      </section>;
-    }
+      </section>
+    );
+  }
 
-    return <section className="panel">
+  return (
+    <section className="panel">
       <p className="eyebrow">TON BUREAU DE DIRECTEUR GÉNÉRAL</p>
       <h2>{equipe}</h2>
       <p>Saison {saison}</p>
@@ -82,8 +108,10 @@ function App() {
       <p className="message">{message}</p>
       <button onClick={simulerMatch}>Simuler le prochain match</button>
       <p className="note">Objectif : remporter la Coupe Stanley!</p>
-    </section>;
-  }
+    </section>
+  );
+}
+
 
   return <div className="app">
     <header>
