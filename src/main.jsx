@@ -58,51 +58,68 @@ function App() {
   const [photos, setPhotos] = useState({});
   const [chargementPhotos, setChargementPhotos] = useState(true);
 
-  useEffect(() => {
-    let actif = true;
+  
+useEffect(() => {
+  let actif = true;
 
-    async function chargerPhotos() {
-      const saisons = ["20262027", "current"];
+  async function chargerPhotos() {
+    const periodes = ["current", "20262027"];
 
-      for (const periode of saisons) {
-        try {
-          const reponse = await fetch(
-            `https://api-web.nhle.com/v1/roster/MTL/${periode}`
-          );
+    for (const periode of periodes) {
+      try {
+        const reponse = await fetch(
+          `https://api-web.nhle.com/v1/roster/MTL/${periode}`
+        );
 
-          if (!reponse.ok) continue;
+        if (!reponse.ok) continue;
 
-          const donnees = await reponse.json();
-          const liste = [
-            ...(donnees.forwards || []),
-            ...(donnees.defensemen || []),
-            ...(donnees.goalies || [])
-          ];
+        const donnees = await reponse.json();
 
-          const nouvellesPhotos = {};
+        const liste = [
+          ...(donnees.forwards || []),
+          ...(donnees.defensemen || []),
+          ...(donnees.goalies || [])
+        ];
 
-          liste.forEach(j => {
-            const prenom = j.firstName?.default || "";
-            const nom = j.lastName?.default || "";
-            const cle = normaliser(`${prenom}${nom}`);
+        const nouvellesPhotos = {};
 
-            if (j.headshot) {
-              nouvellesPhotos[cle] = j.headshot;
-            }
-          });
+        function texte(valeur) {
+          if (typeof valeur === "string") return valeur;
+          return valeur?.default || "";
+        }
 
-          if (actif && Object.keys(nouvellesPhotos).length > 0) {
+        liste.forEach(j => {
+          const prenom = texte(j.firstName);
+          const nom = texte(j.lastName);
+          const cle = normaliser(prenom + nom);
+
+          if (j.headshot && cle) {
+            nouvellesPhotos[cle] = j.headshot;
+          }
+        });
+
+        if (Object.keys(nouvellesPhotos).length > 0) {
+          if (actif) {
             setPhotos(nouvellesPhotos);
             setChargementPhotos(false);
-            return;
           }
-        } catch (erreur) {
-          console.error("Erreur de chargement des photos NHL", erreur);
+          return;
         }
+      } catch (erreur) {
+        console.error("Erreur NHL :", erreur);
       }
-
-      if (actif) setChargementPhotos(false);
     }
+
+    if (actif) setChargementPhotos(false);
+  }
+
+  chargerPhotos();
+
+  return () => {
+    actif = false;
+  };
+}, []);
+
 
     chargerPhotos();
 
