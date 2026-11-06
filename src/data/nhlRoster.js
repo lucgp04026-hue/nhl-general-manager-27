@@ -1,5 +1,6 @@
 
-const API_NHL = "https://api-web.nhle.com/v1/roster";
+const API_NHL =
+  "https://proxy.cors.dev/https://api-web.nhle.com/v1/roster";
 
 function nomTexte(valeur) {
   if (typeof valeur === "string") return valeur;
@@ -14,12 +15,13 @@ function calculerAge(dateNaissance) {
 
   let age = aujourdHui.getFullYear() - naissance.getFullYear();
 
-  const anniversairePasEncorePasse =
+  if (
     aujourdHui.getMonth() < naissance.getMonth() ||
     (aujourdHui.getMonth() === naissance.getMonth() &&
-      aujourdHui.getDate() < naissance.getDate());
-
-  if (anniversairePasEncorePasse) age--;
+      aujourdHui.getDate() < naissance.getDate())
+  ) {
+    age--;
+  }
 
   return age;
 }
@@ -34,7 +36,9 @@ function convertirJoueur(joueur, equipe) {
   };
 
   return {
-    nom: `${nomTexte(joueur.firstName)} ${nomTexte(joueur.lastName)}`.trim(),
+    nom: `${nomTexte(joueur.firstName)} ${nomTexte(
+      joueur.lastName
+    )}`.trim(),
     idNhl: joueur.id,
     numero: joueur.sweaterNumber ?? "",
     pos: positions[joueur.positionCode] || joueur.positionCode || "?",
@@ -55,7 +59,10 @@ function cleNom(nom) {
     .replace(/\s+/g, " ");
 }
 
-export async function chargerTousLesJoueurs(teams, joueursPersonnalises = []) {
+export async function chargerTousLesJoueurs(
+  teams,
+  joueursPersonnalises = []
+) {
   const resultats = await Promise.all(
     teams.map(async (equipe) => {
       try {
@@ -80,9 +87,10 @@ export async function chargerTousLesJoueurs(teams, joueursPersonnalises = []) {
         );
       } catch (erreur) {
         console.error(
-          `Impossible de charger ${equipe.name}:`,
+          `Erreur pour ${equipe.name}:`,
           erreur
         );
+
         return [];
       }
     })
@@ -90,9 +98,9 @@ export async function chargerTousLesJoueurs(teams, joueursPersonnalises = []) {
 
   const joueursNHL = resultats.flat();
 
-  // Les joueurs personnalisés de Montréal sont conservés.
   const joueursMontreal = joueursPersonnalises.filter(
-    (joueur) => joueur.equipe === "Canadiens de Montréal" ||
+    (joueur) =>
+      joueur.equipe === "Canadiens de Montréal" ||
       joueur.equipe === "Montreal Canadiens" ||
       joueur.equipe === "Montréal"
   );
@@ -105,24 +113,26 @@ export async function chargerTousLesJoueurs(teams, joueursPersonnalises = []) {
   );
 
   const joueursFusionnes = joueursNHL.map((joueur) => {
-    const personnalise = nomsPersonnalises.get(
-      cleNom(joueur.nom)
-    );
+    const cle = cleNom(joueur.nom);
+    const personnalise = nomsPersonnalises.get(cle);
 
     if (!personnalise) return joueur;
 
-    nomsPersonnalises.delete(cleNom(joueur.nom));
+    nomsPersonnalises.delete(cle);
 
     return {
       ...joueur,
       ...personnalise,
-      // On conserve la photo déjà corrigée dans ton fichier.
       photo: personnalise.photo || joueur.photo
     };
   });
 
-  // On garde aussi les joueurs personnalisés absents de l'effectif actuel.
-  const joueursMontrealRestants = [...nomsPersonnalises.values()];
+  const joueursMontrealRestants = [
+    ...nomsPersonnalises.values()
+  ];
 
-  return [...joueursFusionnes, ...joueursMontrealRestants];
+  return [
+    ...joueursFusionnes,
+    ...joueursMontrealRestants
+  ];
 }
