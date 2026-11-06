@@ -32,8 +32,6 @@ function App() {
   }
 
   function contenu() {
-
-    // FICHE DU JOUEUR
     if (joueurSelectionne) {
       return (
         <section className="panel">
@@ -42,6 +40,9 @@ function App() {
               <img
                 src={joueurSelectionne.photo}
                 alt={joueurSelectionne.nom}
+                onError={e => {
+                  e.currentTarget.style.display = "none";
+                }}
                 style={{
                   width: "180px",
                   height: "180px",
@@ -89,7 +90,6 @@ function App() {
       );
     }
 
-    // EFFECTIF
     if (onglet === "Effectif") {
       const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
 
@@ -148,7 +148,6 @@ function App() {
       );
     }
 
-    // ÉCHANGES
     if (onglet === "Échanges") {
       return (
         <section className="panel">
@@ -162,7 +161,6 @@ function App() {
       );
     }
 
-    // FINANCES
     if (onglet === "Finances") {
       return (
         <section className="panel">
@@ -180,7 +178,6 @@ function App() {
       );
     }
 
-    // SAISON
     if (onglet === "Saison") {
       return (
         <section className="panel">
@@ -213,7 +210,6 @@ function App() {
       );
     }
 
-    // ACCUEIL
     return (
       <section className="panel">
         <p className="eyebrow">TON BUREAU DE DIRECTEUR GÉNÉRAL</p>
