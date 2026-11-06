@@ -55,7 +55,12 @@ if (onglet === "Effectif") {
         </div>
 
         {liste.map(j => (
-          <div className="ligne" key={j.nom}>
+          <div
+  className="ligne"
+  key={j.nom}
+  onClick={() => setJoueurSelectionne(j)}
+  style={{ cursor: "pointer" }}
+>
             <b>{j.nom}</b>
             <span>{j.pos}</span>
             <span>{j.age}</span>
