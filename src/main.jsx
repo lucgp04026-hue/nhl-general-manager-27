@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 
-const joueurs = [
+const joueurs = players;
   { nom: "Nick Suzuki", pos: "C", age: 27, ovr: 90, salaire: 7.875 },
   { nom: "Cole Caufield", pos: "AD", age: 25, ovr: 89, salaire: 7.85 },
   { nom: "Juraj Slafkovský", pos: "AG", age: 22, ovr: 86, salaire: 7.6 },
