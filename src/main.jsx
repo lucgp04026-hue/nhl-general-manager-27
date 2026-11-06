@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+
 import { teams } from "./data/teams.js";
 import { players } from "./data/players.js";
+import { chargerTousLesJoueurs } from "./data/nhlRoster.js";
+
 import "./style.css";
 
-// PHOTO DU JOUEUR
-function PhotoJoueur({ joueur, taille = 58 }) {
+function PhotoJoueur({ joueur, taille = 65 }) {
   const [erreur, setErreur] = useState(false);
 
   return (
@@ -13,14 +16,13 @@ function PhotoJoueur({ joueur, taille = 58 }) {
       style={{
         width: taille,
         height: taille,
-        minWidth: taille,
         borderRadius: "50%",
         overflow: "hidden",
         background: "#263449",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        border: "2px solid #46566d"
+        flexShrink: 0
       }}
     >
       {joueur.photo && !erreur ? (
@@ -35,7 +37,7 @@ function PhotoJoueur({ joueur, taille = 58 }) {
           }}
         />
       ) : (
-        <span style={{ fontSize: 25 }}>🏒</span>
+        <span style={{ fontSize: taille / 2 }}>🏒</span>
       )}
     </div>
   );
@@ -43,142 +45,157 @@ function PhotoJoueur({ joueur, taille = 58 }) {
 
 function App() {
   const equipeDepart =
-    teams.find((e) =>
-      e.name.toLowerCase().includes("montréal")
-    ) || teams[0];
+    teams.find((equipe) => equipe.id === "MTL") || teams[0];
 
   const [onglet, setOnglet] = useState("Accueil");
-  const [equipeId, setEquipeId] = useState(equipeDepart?.id);
+  const [equipeSelectionnee, setEquipeSelectionnee] =
+    useState(equipeDepart?.id || "MTL");
+
   const [effectif, setEffectif] = useState(players);
+  const [chargementNHL, setChargementNHL] = useState(true);
+  const [erreurChargement, setErreurChargement] = useState("");
 
   const [victoires, setVictoires] = useState(0);
   const [defaites, setDefaites] = useState(0);
-  const [nuls, setNuls] = useState(0);
-  const [points, setPoints] = useState(0);
-  const [matchs, setMatchs] = useState(0);
-  const [dernierMatch, setDernierMatch] = useState("");
+  const [defaitesProlongation, setDefaitesProlongation] =
+    useState(0);
 
+  const [joueurSelectionne, setJoueurSelectionne] = useState(null);
   const [joueurEchange, setJoueurEchange] = useState("");
-  const [equipeEchange, setEquipeEchange] = useState("");
+  const [messageEchange, setMessageEchange] = useState("");
 
-  const equipe = teams.find((e) => e.id === equipeId);
-
-  const nomEquipe = equipe?.name || "Mon équipe";
+  const equipeActuelle = teams.find(
+    (equipe) => equipe.id === equipeSelectionnee
+  );
 
   const joueursEquipe = effectif.filter(
-    (j) => j.equipe === nomEquipe
+    (joueur) => joueur.equipe === equipeActuelle?.name
   );
 
-  const attaquants = joueursEquipe.filter(
-    (j) => ["C", "AG", "AD", "C/AG", "C/AD"].includes(j.pos)
-  );
+  const totalMatchs =
+    victoires + defaites + defaitesProlongation;
 
-  const defenseurs = joueursEquipe.filter(
-    (j) => j.pos === "D"
-  );
+  const points = victoires * 2 + defaitesProlongation;
 
-  const gardiens = joueursEquipe.filter(
-    (j) => j.pos === "G"
-  );
-
-  const moyenne =
-    joueursEquipe.length > 0
-      ? Math.round(
-          joueursEquipe.reduce((total, j) => total + (j.ovr || 0), 0) /
-            joueursEquipe.length
-        )
+  const pourcentage =
+    totalMatchs > 0
+      ? Math.round((victoires / totalMatchs) * 100)
       : 0;
 
-  const masseSalariale = joueursEquipe.reduce(
-    (total, j) => total + (Number(j.salaire) || 0),
-    0
-  );
+  useEffect(() => {
+    let actif = true;
+
+    chargerTousLesJoueurs(teams, players)
+      .then((liste) => {
+        if (actif && liste.length > 0) {
+          setEffectif(liste);
+          setErreurChargement("");
+        }
+      })
+      .catch((erreur) => {
+        console.error("Erreur NHL :", erreur);
+
+        if (actif) {
+          setErreurChargement(
+            "Impossible de charger les effectifs NHL."
+          );
+        }
+      })
+      .finally(() => {
+        if (actif) setChargementNHL(false);
+      });
+
+    return () => {
+      actif = false;
+    };
+  }, []);
 
   function simulerMatch() {
-    const butsNous = Math.floor(Math.random() * 6);
-    const butsAdversaire = Math.floor(Math.random() * 6);
+    const resultat = Math.random();
 
-    setMatchs(matchs + 1);
-
-    if (butsNous > butsAdversaire) {
-      setVictoires(victoires + 1);
-      setPoints(points + 2);
-    } else if (butsNous < butsAdversaire) {
-      setDefaites(defaites + 1);
+    if (resultat < 0.45) {
+      setVictoires((v) => v + 1);
+      alert("Victoire ! 🏆");
+    } else if (resultat < 0.85) {
+      setDefaites((d) => d + 1);
+      alert("Défaite.");
     } else {
-      setNuls(nuls + 1);
-      setPoints(points + 1);
+      setDefaitesProlongation((d) => d + 1);
+      alert("Défaite en prolongation.");
     }
-
-    setDernierMatch(
-      `${nomEquipe} ${butsNous} - ${butsAdversaire} Adversaire`
-    );
   }
 
   function recommencerSaison() {
+    if (!window.confirm("Recommencer la saison ?")) return;
+
     setVictoires(0);
     setDefaites(0);
-    setNuls(0);
-    setPoints(0);
-    setMatchs(0);
-    setDernierMatch("");
+    setDefaitesProlongation(0);
   }
 
   function effectuerEchange() {
-    if (!joueurEchange || !equipeEchange) {
-      alert("Choisis un joueur et une équipe.");
+    if (!joueurSelectionne || !joueurEchange) {
+      setMessageEchange("Sélectionne deux joueurs.");
       return;
     }
 
-    const joueur = effectif.find(
-      (j) => j.nom === joueurEchange && j.equipe === nomEquipe
+    const joueurCible = effectif.find(
+      (joueur) => String(joueur.idNhl) === String(joueurEchange)
     );
 
-    if (!joueur) {
-      alert("Joueur introuvable.");
+    if (!joueurCible) {
+      setMessageEchange("Joueur introuvable.");
       return;
     }
 
-    setEffectif((anciens) =>
-      anciens.map((j) =>
-        j.nom === joueurEchange
-          ? { ...j, equipe: equipeEchange }
-          : j
-      )
-    );
+    if (joueurSelectionne.idNhl === joueurCible.idNhl) {
+      setMessageEchange("Tu ne peux pas échanger un joueur contre lui-même.");
+      return;
+    }
 
-    alert(
-      `${joueur.nom} a été transféré à ${equipeEchange}.`
-    );
+    const nouvelleListe = effectif.map((joueur) => {
+      if (joueur.idNhl === joueurSelectionne.idNhl) {
+        return {
+          ...joueur,
+          equipe: joueurCible.equipe
+        };
+      }
 
+      if (joueur.idNhl === joueurCible.idNhl) {
+        return {
+          ...joueur,
+          equipe: joueurSelectionne.equipe
+        };
+      }
+
+      return joueur;
+    });
+
+    setEffectif(nouvelleListe);
+    setJoueurSelectionne(null);
     setJoueurEchange("");
-    setEquipeEchange("");
+    setMessageEchange(
+      "Échange effectué ! Les deux joueurs ont changé d'équipe."
+    );
   }
 
-  const boutonStyle = {
-    background: "#e63946",
+  const styleBouton = {
+    background: "#1769aa",
     color: "white",
     border: "none",
     borderRadius: 8,
-    padding: "11px 18px",
-    fontWeight: "bold",
-    cursor: "pointer"
+    padding: "10px 15px",
+    cursor: "pointer",
+    fontWeight: "bold"
   };
 
-  const carteStyle = {
+  const styleCarte = {
     background: "#172438",
-    border: "1px solid #2c3d54",
+    color: "white",
     borderRadius: 12,
-    padding: 18
+    padding: 15,
+    marginBottom: 12
   };
-
-  const onglets = [
-    "Accueil",
-    "Effectif",
-    "Échanges",
-    "Saison",
-    "Finances"
-  ];
 
   return (
     <div
@@ -187,92 +204,50 @@ function App() {
         background: "#0b1422",
         color: "white",
         fontFamily: "Arial, sans-serif",
-        padding: 15
+        paddingBottom: 30
       }}
     >
-      {/* EN-TÊTE */}
-
       <header
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 12,
-          borderBottom: "1px solid #34445b",
-          paddingBottom: 18
+          background: "#101e32",
+          padding: 20,
+          textAlign: "center",
+          borderBottom: "3px solid #1769aa"
         }}
       >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 25 }}>
-            🏒 NHL GENERAL MANAGER 27
-          </h1>
+        <h1 style={{ margin: 0 }}>
+          🏒 NHL GENERAL MANAGER 27
+        </h1>
 
-          <p style={{ color: "#9eafc4", marginBottom: 0 }}>
-            Saison 2026-2027 · Jeu gratuit
-          </p>
-        </div>
-
-        <span
-          style={{
-            background: "#146c43",
-            padding: "7px 13px",
-            borderRadius: 20,
-            fontSize: 12
-          }}
-        >
-          100 % GRATUIT
-        </span>
+        <p style={{ color: "#aabbd0" }}>
+          Construis ton équipe. Gère ta franchise. Gagne la Coupe !
+        </p>
       </header>
-
-      {/* CHOIX DE L'ÉQUIPE */}
-
-      <div style={{ marginTop: 20 }}>
-        <label style={{ display: "block", marginBottom: 8 }}>
-          Ton équipe
-        </label>
-
-        <select
-          value={equipeId ?? ""}
-          onChange={(e) => setEquipeId(e.target.value)}
-          style={{
-            width: "100%",
-            maxWidth: 400,
-            padding: 12,
-            background: "#172438",
-            color: "white",
-            border: "1px solid #46566d",
-            borderRadius: 8
-          }}
-        >
-          {teams.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* NAVIGATION */}
 
       <nav
         style={{
           display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
           gap: 8,
-          overflowX: "auto",
-          marginTop: 22,
-          paddingBottom: 12
+          padding: 15,
+          background: "#101e32"
         }}
       >
-        {onglets.map((nom) => (
+        {[
+          "Accueil",
+          "Effectif",
+          "Échanges",
+          "Saison",
+          "Finances"
+        ].map((nom) => (
           <button
             key={nom}
             onClick={() => setOnglet(nom)}
             style={{
-              ...boutonStyle,
+              ...styleBouton,
               background:
-                onglet === nom ? "#e63946" : "#263449",
-              whiteSpace: "nowrap"
+                onglet === nom ? "#e63946" : "#263449"
             }}
           >
             {nom}
@@ -280,327 +255,333 @@ function App() {
         ))}
       </nav>
 
-      {/* ACCUEIL */}
+      <main
+        style={{
+          maxWidth: 1100,
+          margin: "auto",
+          padding: 15
+        }}
+      >
+        <div style={styleCarte}>
+          <label>
+            <strong>Équipe sélectionnée :</strong>
+          </label>
 
-      {onglet === "Accueil" && (
-        <section>
-          <h2>{nomEquipe}</h2>
-
-          <div
+          <select
+            value={equipeSelectionnee}
+            onChange={(e) => {
+              setEquipeSelectionnee(e.target.value);
+              setJoueurSelectionne(null);
+              setMessageEchange("");
+            }}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-              gap: 12
+              display: "block",
+              width: "100%",
+              padding: 12,
+              marginTop: 10,
+              borderRadius: 8,
+              background: "#263449",
+              color: "white",
+              border: "1px solid #52647b"
             }}
           >
-            <div style={carteStyle}>
-              <h3>{victoires}</h3>
-              <p>Victoires</p>
-            </div>
+            {teams.map((equipe) => (
+              <option key={equipe.id} value={equipe.id}>
+                {equipe.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <div style={carteStyle}>
-              <h3>{defaites}</h3>
-              <p>Défaites</p>
-            </div>
-
-            <div style={carteStyle}>
-              <h3>{points}</h3>
-              <p>Points</p>
-            </div>
-
-            <div style={carteStyle}>
-              <h3>{moyenne || "-"}</h3>
-              <p>Moyenne équipe</p>
-            </div>
+        {chargementNHL && (
+          <div style={styleCarte}>
+            Chargement des effectifs NHL...
           </div>
+        )}
 
-          <div style={{ ...carteStyle, marginTop: 18 }}>
-            <h3>Dernier match</h3>
+        {erreurChargement && (
+          <div style={{ ...styleCarte, color: "#ffb4b4" }}>
+            {erreurChargement}
+          </div>
+        )}
+
+        {onglet === "Accueil" && (
+          <>
+            <h2>Tableau de bord</h2>
+
+            <div style={styleCarte}>
+              <h2>{equipeActuelle?.name}</h2>
+              <p>
+                Conférence : {equipeActuelle?.conference}
+              </p>
+              <p>
+                Division : {equipeActuelle?.division}
+              </p>
+              <p>
+                Joueurs dans l'effectif : {joueursEquipe.length}
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                gap: 10
+              }}
+            >
+              <div style={styleCarte}>
+                <h3>Victoires</h3>
+                <h1>{victoires}</h1>
+              </div>
+
+              <div style={styleCarte}>
+                <h3>Défaites</h3>
+                <h1>{defaites}</h1>
+              </div>
+
+              <div style={styleCarte}>
+                <h3>Prolongations</h3>
+                <h1>{defaitesProlongation}</h1>
+              </div>
+
+              <div style={styleCarte}>
+                <h3>Points</h3>
+                <h1>{points}</h1>
+              </div>
+            </div>
+
+            <div style={styleCarte}>
+              <h3>Saison 2026-2027</h3>
+              <p>Matchs joués : {totalMatchs}</p>
+              <p>Pourcentage de victoires : {pourcentage} %</p>
+
+              <button
+                style={styleBouton}
+                onClick={simulerMatch}
+              >
+                Simuler un match
+              </button>
+
+              <button
+                style={{
+                  ...styleBouton,
+                  background: "#7a3440",
+                  marginLeft: 8
+                }}
+                onClick={recommencerSaison}
+              >
+                Recommencer
+              </button>
+            </div>
+          </>
+        )}
+
+        {onglet === "Effectif" && (
+          <>
+            <h2>Effectif de {equipeActuelle?.name}</h2>
 
             <p>
-              {dernierMatch || "Aucun match joué."}
+              {joueursEquipe.length} joueur(s) dans l'équipe
             </p>
 
-            <button
-              style={boutonStyle}
-              onClick={simulerMatch}
-            >
-              Jouer un match
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* EFFECTIF */}
-
-      {onglet === "Effectif" && (
-        <section>
-          <h2>Effectif - {nomEquipe}</h2>
-
-          <p style={{ color: "#aab8ca" }}>
-            {joueursEquipe.length} joueurs · Note moyenne : {moyenne || "-"}
-          </p>
-
-          {joueursEquipe.length === 0 ? (
-            <div style={carteStyle}>
-              Aucun joueur n'est encore ajouté à cette équipe.
-            </div>
-          ) : (
-            <>
-              <h3>Attaquants</h3>
-
-              {attaquants.map((j) => (
+            {joueursEquipe.length === 0 ? (
+              <div style={styleCarte}>
+                Aucun joueur chargé pour cette équipe.
+              </div>
+            ) : (
+              joueursEquipe.map((joueur, index) => (
                 <div
-                  key={j.nom}
+                  key={`${joueur.idNhl || joueur.nom}-${index}`}
                   style={{
-                    ...carteStyle,
+                    ...styleCarte,
                     display: "flex",
                     alignItems: "center",
-                    gap: 14,
-                    marginBottom: 10
+                    gap: 12
                   }}
                 >
-                  <PhotoJoueur joueur={j} />
+                  <PhotoJoueur joueur={joueur} />
 
                   <div style={{ flex: 1 }}>
-                    <strong>{j.nom}</strong>
-                    <p style={{ margin: "5px 0", color: "#aab8ca" }}>
-                      #{j.numero} · {j.pos} · {j.age} ans
+                    <strong>{joueur.nom}</strong>
+                    <p style={{ margin: "5px 0", color: "#aabbd0" }}>
+                      #{joueur.numero} · {joueur.pos} · {joueur.age} ans
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      OVR : {joueur.ovr}
                     </p>
                   </div>
 
-                  <strong style={{ color: "#f5c451" }}>
-                    {j.ovr} OVR
-                  </strong>
-                </div>
-              ))}
-
-              <h3>Défenseurs</h3>
-
-              {defenseurs.map((j) => (
-                <div
-                  key={j.nom}
-                  style={{
-                    ...carteStyle,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    marginBottom: 10
-                  }}
-                >
-                  <PhotoJoueur joueur={j} />
-
-                  <div style={{ flex: 1 }}>
-                    <strong>{j.nom}</strong>
-                    <p style={{ margin: "5px 0", color: "#aab8ca" }}>
-                      #{j.numero} · {j.pos} · {j.age} ans
-                    </p>
+                  <div style={{ textAlign: "right" }}>
+                    {joueur.salaire
+                      ? `${joueur.salaire} M$`
+                      : "Salaire à ajouter"}
                   </div>
-
-                  <strong style={{ color: "#f5c451" }}>
-                    {j.ovr} OVR
-                  </strong>
                 </div>
-              ))}
+              ))
+            )}
+          </>
+        )}
 
-              <h3>Gardiens</h3>
+        {onglet === "Échanges" && (
+          <>
+            <h2>Centre des échanges</h2>
 
-              {gardiens.map((j) => (
-                <div
-                  key={j.nom}
-                  style={{
-                    ...carteStyle,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    marginBottom: 10
-                  }}
-                >
-                  <PhotoJoueur joueur={j} />
+            <div style={styleCarte}>
+              <h3>1. Choisir ton joueur</h3>
 
-                  <div style={{ flex: 1 }}>
-                    <strong>{j.nom}</strong>
-                    <p style={{ margin: "5px 0", color: "#aab8ca" }}>
-                      #{j.numero} · {j.pos} · {j.age} ans
-                    </p>
-                  </div>
+              <select
+                value={joueurSelectionne?.idNhl || ""}
+                onChange={(e) => {
+                  const joueur = effectif.find(
+                    (j) =>
+                      String(j.idNhl) === e.target.value &&
+                      j.equipe === equipeActuelle?.name
+                  );
 
-                  <strong style={{ color: "#f5c451" }}>
-                    {j.ovr} OVR
-                  </strong>
-                </div>
-              ))}
-            </>
-          )}
-        </section>
-      )}
-
-      {/* ÉCHANGES */}
-
-      {onglet === "Échanges" && (
-        <section>
-          <h2>Centre des échanges</h2>
-
-          <div style={carteStyle}>
-            <h3>Proposer un échange</h3>
-
-            <label>Joueur à échanger</label>
-
-            <select
-              value={joueurEchange}
-              onChange={(e) => setJoueurEchange(e.target.value)}
-              style={{
-                display: "block",
-                width: "100%",
-                padding: 12,
-                marginTop: 8,
-                marginBottom: 16,
-                background: "#263449",
-                color: "white",
-                borderRadius: 8
-              }}
-            >
-              <option value="">Choisir un joueur</option>
-
-              {joueursEquipe.map((j) => (
-                <option key={j.nom} value={j.nom}>
-                  {j.nom}
-                </option>
-              ))}
-            </select>
-
-            <label>Équipe destinataire</label>
-
-            <select
-              value={equipeEchange}
-              onChange={(e) => setEquipeEchange(e.target.value)}
-              style={{
-                display: "block",
-                width: "100%",
-                padding: 12,
-                marginTop: 8,
-                marginBottom: 16,
-                background: "#263449",
-                color: "white",
-                borderRadius: 8
-              }}
-            >
-              <option value="">Choisir une équipe</option>
-
-              {teams
-                .filter((e) => e.name !== nomEquipe)
-                .map((e) => (
-                  <option key={e.id} value={e.name}>
-                    {e.name}
-                  </option>
-                ))}
-            </select>
-
-            <button
-              style={boutonStyle}
-              onClick={effectuerEchange}
-            >
-              Effectuer le transfert
-            </button>
-          </div>
-
-          <p style={{ color: "#aab8ca", marginTop: 15 }}>
-            Cette première version permet de transférer un joueur vers
-            une autre équipe. Les échanges complets avec plusieurs
-            joueurs et choix de repêchage restent à développer.
-          </p>
-        </section>
-      )}
-
-      {/* SAISON */}
-
-      {onglet === "Saison" && (
-        <section>
-          <h2>Saison 2026-2027</h2>
-
-          <div style={carteStyle}>
-            <h3>Statistiques de la saison</h3>
-
-            <p>Matchs joués : {matchs}</p>
-            <p>Victoires : {victoires}</p>
-            <p>Défaites : {defaites}</p>
-            <p>Matchs nuls : {nuls}</p>
-            <p>Points : {points}</p>
-
-            <button
-              style={boutonStyle}
-              onClick={simulerMatch}
-            >
-              Simuler un match
-            </button>
-
-            <button
-              onClick={recommencerSaison}
-              style={{
-                ...boutonStyle,
-                background: "#46566d",
-                marginLeft: 8
-              }}
-            >
-              Nouvelle saison
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* FINANCES */}
-
-      {onglet === "Finances" && (
-        <section>
-          <h2>Finances de l'équipe</h2>
-
-          <div style={carteStyle}>
-            <h3>Masse salariale</h3>
-
-            <h1 style={{ color: "#f5c451" }}>
-              {masseSalariale.toFixed(3)} M$
-            </h1>
-
-            <p>Nombre de joueurs : {joueursEquipe.length}</p>
-
-            <h3>Détail des contrats</h3>
-
-            {joueursEquipe.map((j) => (
-              <div
-                key={j.nom}
+                  setJoueurSelectionne(joueur || null);
+                  setMessageEchange("");
+                }}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  borderBottom: "1px solid #34445b",
-                  padding: "10px 0",
-                  gap: 10
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8
                 }}
               >
-                <span>{j.nom}</span>
-                <strong>{j.salaire} M$</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+                <option value="">Choisir un joueur</option>
 
-      {/* PIED DE PAGE */}
+                {joueursEquipe.map((joueur, index) => (
+                  <option
+                    key={`${joueur.idNhl}-${index}`}
+                    value={joueur.idNhl}
+                  >
+                    {joueur.nom}
+                  </option>
+                ))}
+              </select>
+
+              <h3>2. Choisir le joueur à recevoir</h3>
+
+              <select
+                value={joueurEchange}
+                onChange={(e) => {
+                  setJoueurEchange(e.target.value);
+                  setMessageEchange("");
+                }}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8
+                }}
+              >
+                <option value="">Choisir un joueur</option>
+
+                {effectif
+                  .filter(
+                    (joueur) =>
+                      joueur.equipe !== equipeActuelle?.name
+                  )
+                  .map((joueur, index) => (
+                    <option
+                      key={`${joueur.idNhl}-${index}`}
+                      value={joueur.idNhl}
+                    >
+                      {joueur.nom} — {joueur.equipe}
+                    </option>
+                  ))}
+              </select>
+
+              <button
+                onClick={effectuerEchange}
+                style={{ ...styleBouton, marginTop: 15 }}
+              >
+                Confirmer l'échange
+              </button>
+
+              {messageEchange && (
+                <p>{messageEchange}</p>
+              )}
+            </div>
+          </>
+        )}
+
+        {onglet === "Saison" && (
+          <>
+            <h2>Saison 2026-2027</h2>
+
+            <div style={styleCarte}>
+              <h3>Résultats de la saison</h3>
+              <p>Matchs joués : {totalMatchs}</p>
+              <p>Victoires : {victoires}</p>
+              <p>Défaites : {defaites}</p>
+              <p>Défaites en prolongation : {defaitesProlongation}</p>
+              <p>Points au classement : {points}</p>
+              <p>Pourcentage de victoires : {pourcentage} %</p>
+
+              <button
+                style={styleBouton}
+                onClick={simulerMatch}
+              >
+                Jouer le prochain match
+              </button>
+            </div>
+
+            <div style={styleCarte}>
+              <h3>Classement</h3>
+              <p>
+                Le classement complet de la LNH sera ajouté dans
+                la prochaine étape.
+              </p>
+            </div>
+          </>
+        )}
+
+        {onglet === "Finances" && (
+          <>
+            <h2>Finances de la franchise</h2>
+
+            <div style={styleCarte}>
+              <h3>{equipeActuelle?.name}</h3>
+
+              <p>
+                Nombre de joueurs : {joueursEquipe.length}
+              </p>
+
+              <p>
+                Masse salariale connue :{" "}
+                {joueursEquipe
+                  .reduce(
+                    (total, joueur) =>
+                      total + (Number(joueur.salaire) || 0),
+                    0
+                  )
+                  .toFixed(2)}{" "}
+                M$
+              </p>
+
+              <p>
+                Les salaires non renseignés ne sont pas inclus
+                dans ce total.
+              </p>
+            </div>
+          </>
+        )}
+      </main>
 
       <footer
         style={{
           textAlign: "center",
-          color: "#71839a",
-          marginTop: 40,
           padding: 20,
-          borderTop: "1px solid #34445b"
+          color: "#8395aa"
         }}
       >
-        NHL GENERAL MANAGER 27 · Projet gratuit
+        NHL General Manager 27 · Jeu gratuit
       </footer>
     </div>
   );
 }
 
 createRoot(document.getElementById("root")).render(
-  <App />
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 );
