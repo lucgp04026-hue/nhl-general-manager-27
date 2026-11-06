@@ -23,7 +23,7 @@ export const players = [
   { nom: "Jake Evans", idNhl: 8478133, numero: 71, pos: "C", age: 30, ovr: 82, salaire: 2.85, equipe: "Canadiens de Montréal", photo: photo(8478133) },
   { nom: "Zachary Bolduc", idNhl: 8482737, numero: 76, pos: "AG", age: 23, ovr: 83, salaire: 4.2, equipe: "Canadiens de Montréal", photo: photo(8482737) },
   { nom: "Ivan Demidov", idNhl: 8484786, numero: 93, pos: "AD", age: 20, ovr: 89, salaire: 0.941, equipe: "Canadiens de Montréal", photo: photo(8484786) },
-  { nom: "Oliver Kapanen", idNhl: 8480865, numero: 91, pos: "C", age: 23, ovr: 81, salaire: 0.943, equipe: "Canadiens de Montréal", photo: photo(8480865) },
+  { nom: "Oliver Kapanen", idNhl: 8480865, numero: 91, pos: "C", age: 23, ovr: 81, salaire: 0.943, equipe: "Canadiens de Montréal", photo: photo(8482775) },
   { nom: "Alexandre Texier", idNhl: 8480074, numero: 85, pos: "AG", age: 27, ovr: 82, salaire: 2.5, equipe: "Canadiens de Montréal", photo: photo(8480074) },
   { nom: "Chris Kreider", idNhl: 8475184, numero: 22, pos: "AG", age: 35, ovr: 85, salaire: 2.15, equipe: "Canadiens de Montréal", photo: photo(8475184) },
   { nom: "Owen Beck", idNhl: 8483424, numero: 62, pos: "C", age: 22, ovr: 78, salaire: 0.79, equipe: "Canadiens de Montréal", photo: photo(8483424) },
