@@ -9,7 +9,7 @@ export const players = [
   { nom: "Cole Caufield", idNhl: 8481540, numero: 13, pos: "AD", age: 25, ovr: 91, salaire: 7.85, equipe: "Canadiens de Montréal", photo: photo(8481540) },
   { nom: "Juraj Slafkovský", idNhl: 8483515, numero: 20, pos: "AG", age: 22, ovr: 87, salaire: 7.6, equipe: "Canadiens de Montréal", photo: photo(8483515) },
   { nom: "Lane Hutson", idNhl: 8483457, numero: 48, pos: "D", age: 22, ovr: 94, salaire: 8.85, equipe: "Canadiens de Montréal", photo: photo(8483457) },
-  { nom: "Noah Dobson", idNhl: 8478445, numero: 53, pos: "D", age: 26, ovr: 89, salaire: 9.5, equipe: "Canadiens de Montréal", photo: photo(8478445) },
+  { nom: "Noah Dobson", idNhl: 8478445, numero: 53, pos: "D", age: 26, ovr: 89, salaire: 9.5, equipe: "Canadiens de Montréal", photo: photo(8480865) },
   { nom: "Kaiden Guhle", idNhl: 8482087, numero: 21, pos: "D", age: 24, ovr: 86, salaire: 5.55, equipe: "Canadiens de Montréal", photo: photo(8482087) },
   { nom: "Mike Matheson", idNhl: 8476875, numero: 8, pos: "D", age: 32, ovr: 85, salaire: 6.0, equipe: "Canadiens de Montréal", photo: photo(8476875) },
   { nom: "Alexandre Carrier", idNhl: 8478851, numero: 45, pos: "D", age: 30, ovr: 84, salaire: 3.75, equipe: "Canadiens de Montréal", photo: photo(8478851) },
