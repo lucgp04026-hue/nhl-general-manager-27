@@ -12,6 +12,7 @@ function App() {
   const [victoires, setVictoires] = useState(0);
   const [defaites, setDefaites] = useState(0);
   const [equipe, setEquipe] = useState("Canadiens de Montréal");
+  const [joueurSelectionne, setJoueurSelectionne] = useState(null);
   const [saison, setSaison] = useState("2026-2027");
   const [message, setMessage] = useState("Bienvenue dans ton bureau de DG!");
 
