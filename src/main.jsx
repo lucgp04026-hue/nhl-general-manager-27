@@ -38,6 +38,10 @@ function App() {
       return (
         <section className="panel">
           <h2>{joueurSelectionne.nom}</h2>
+          <div className="stat">
+  <span>Numéro de chandail</span>
+  <b>#{joueurSelectionne.numero || "À définir"}</b>
+</div>
 
           <div className="stat">
             <span>Équipe</span>
