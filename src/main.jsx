@@ -31,40 +31,57 @@ function App() {
   }
 
   function contenu() {
-    if (onglet === "Effectif") {
-      const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
+    
+if (onglet === "Effectif") {
+  const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
 
-      return (
-        <section className="panel">
-          <h2>Ton effectif</h2>
-          <p>{joueursEquipe.length} joueurs dans ton équipe</p>
+  const attaquants = joueursEquipe.filter(j =>
+    ["C", "AG", "AD", "C/AG"].includes(j.pos)
+  );
 
-          <div className="table">
-            <div className="ligne entete">
-              <span>Joueur</span>
-              <span>Pos.</span>
-              <span>Âge</span>
-              <span>OVR</span>
-              <span>Salaire</span>
-            </div>
+  const defenseurs = joueursEquipe.filter(j => j.pos === "D");
+  const gardiens = joueursEquipe.filter(j => j.pos === "G");
 
-            {joueursEquipe.map(j => (
-              <div className="ligne" key={j.nom}>
-                <b>{j.nom}</b>
-                <span>{j.pos}</span>
-                <span>{j.age}</span>
-                <b>{j.ovr}</b>
-                <span>{j.salaire} M$</span>
-              </div>
-            ))}
+  function afficherJoueurs(liste) {
+    return (
+      <div className="table">
+        <div className="ligne entete">
+          <span>Joueur</span>
+          <span>Pos.</span>
+          <span>Âge</span>
+          <span>OVR</span>
+          <span>Salaire</span>
+        </div>
+
+        {liste.map(j => (
+          <div className="ligne" key={j.nom}>
+            <b>{j.nom}</b>
+            <span>{j.pos}</span>
+            <span>{j.age}</span>
+            <b>{j.ovr}</b>
+            <span>{j.salaire} M$</span>
           </div>
+        ))}
+      </div>
+    );
+  }
 
-          <p className="note">
-            Effectif de démonstration à compléter et à vérifier.
-          </p>
-        </section>
-      );
-    }
+  return (
+    <section className="panel">
+      <h2>Effectif - {equipe}</h2>
+
+      <h3>🏒 Attaquants ({attaquants.length})</h3>
+      {afficherJoueurs(attaquants)}
+
+      <h3>🛡️ Défenseurs ({defenseurs.length})</h3>
+      {afficherJoueurs(defenseurs)}
+
+      <h3>🥅 Gardiens ({gardiens.length})</h3>
+      {afficherJoueurs(gardiens)}
+    </section>
+  );
+}
+
 
     if (onglet === "Échanges") {
       return (
