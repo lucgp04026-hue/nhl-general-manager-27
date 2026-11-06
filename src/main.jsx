@@ -80,11 +80,25 @@ function App() {
     (joueur) => joueur.equipe === equipeSelectionnee.name
   );
 
+  // Les salaires sont stockés en millions dans les données.
   const totalMasseSalariale = joueursEquipe.reduce(
     (total, joueur) =>
       total + (Number(joueur.salaire) || 0),
     0
   );
+
+  // Affichage des salaires en dollars américains complets.
+  function afficherSalaire(salaire) {
+    const montant = Number(salaire) || 0;
+
+    if (montant <= 0) return "Non disponible";
+
+    return (montant * 1000000).toLocaleString("fr-CA", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    });
+  }
 
   const styleBouton = {
     padding: "11px 18px",
@@ -113,7 +127,6 @@ function App() {
     maxWidth: "100%"
   };
 
-  // Classe les joueurs selon leur position.
   function categoriePosition(position) {
     const pos = String(position || "")
       .toUpperCase()
@@ -224,7 +237,9 @@ function App() {
     }
 
     if (joueur1.equipe === joueur2.equipe) {
-      setMessage("Les joueurs doivent appartenir à deux équipes différentes.");
+      setMessage(
+        "Les joueurs doivent appartenir à deux équipes différentes."
+      );
       return;
     }
 
@@ -251,14 +266,6 @@ function App() {
         joueur2.nom +
         " !"
     );
-  }
-
-  function afficherSalaire(salaire) {
-    const montant = Number(salaire) || 0;
-
-    if (montant === 0) return "Non disponible";
-
-    return montant.toFixed(2) + " M$";
   }
 
   function afficherPhoto(joueur) {
@@ -507,7 +514,7 @@ function App() {
 
             <p>
               Masse salariale :{" "}
-              {totalMasseSalariale.toFixed(2)} M$
+              {afficherSalaire(totalMasseSalariale)}
             </p>
           </div>
 
@@ -627,7 +634,9 @@ function App() {
 
             <p>Victoires : {victoires}</p>
             <p>Défaites : {defaites}</p>
-            <p>Défaites en prolongation : {defaitesProlongation}</p>
+            <p>
+              Défaites en prolongation : {defaitesProlongation}
+            </p>
 
             <p>
               Points : {victoires * 2 + defaitesProlongation}
@@ -675,11 +684,15 @@ function App() {
             <p>Joueurs : {joueursEquipe.length}</p>
 
             <h2>
-              {totalMasseSalariale.toFixed(2)} M$
+              {afficherSalaire(totalMasseSalariale)}
             </h2>
 
             <p>
               Total des salaires des joueurs affichés dans l'effectif.
+            </p>
+
+            <p style={{ color: "#a9c5df", fontSize: "13px" }}>
+              Montants en dollars américains (USD).
             </p>
           </div>
         </section>
