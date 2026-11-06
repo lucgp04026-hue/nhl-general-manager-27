@@ -108,16 +108,10 @@ function App() {
     </header>
 
     <section className="hero">
-      <p>À TOI DE BÂTIR UNE DYNASTIE</p>
-      <h1>DEVENEZ LE MAÎTRE<br/>DE VOTRE FRANCHISE.</h1>
-      <select value={equipe} onChange={e => setEquipe(e.target.value)}>
-        <option>Canadiens de Montréal</option>
-        <option>Toronto Maple Leafs</option>
-        <option>Boston Bruins</option>
-        <option>New York Rangers</option>
-        <option>Edmonton Oilers</option>
-      </select>
-    </section>
+  <p>À TOI DE BÂTIR UNE DYNASTIE</p>
+  <h1>DEVENEZ LE MAÎTRE<br/>DE VOTRE FRANCHISE.</h1>
+  <select value={equipe} onChange={e => setEquipe(e.target.value)}>{teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}</select>
+</section>
 
     <nav>
       {["Accueil", "Effectif", "Échanges", "Saison", "Finances"].map(t =>
