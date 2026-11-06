@@ -30,5 +30,5 @@ export const players = [
   { nom: "Florian Xhekaj", idNhl: 8484403, numero: 63, pos: "AG", age: 22, ovr: 76, salaire: 0.943, equipe: "Canadiens de Montréal", photo: photo(8484403) },
   { nom: "Jakub Dobeš", idNhl: 8482487, numero: 75, pos: "G", age: 25, ovr: 84, salaire: 0.925, equipe: "Canadiens de Montréal", photo: photo(8482487) },
   { nom: "Jacob Fowler", idNhl: 8484170, numero: 32, pos: "G", age: 22, ovr: 87, salaire: 0.925, equipe: "Canadiens de Montréal", photo: photo(8484170) },
-  { nom: "Samuel Montembeault", idNhl: 8476434, numero: 35, pos: "G", age: 30, ovr: 83, salaire: 3.15, equipe: "Canadiens de Montréal", photo: photo(8476434) }
+  { nom: "Samuel Montembeault", idNhl: 8476434, numero: 35, pos: "G", age: 30, ovr: 83, salaire: 3.15, equipe: "Canadiens de Montréal", photo: photo(8478470) }
 ];
