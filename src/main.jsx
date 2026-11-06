@@ -31,7 +31,8 @@ function App() {
   }
 
   function contenu() {
-    if (onglet === "Effectif") {
+    <h2>Ton effectif ({joueurs.length} joueurs au total)</h2>
+<p>Joueurs de cette équipe : {joueurs.filter(j => j.equipe === equipe).length}</p>
       return <section className="panel">
         <h2>Ton effectif</h2>
         <div className="table">
