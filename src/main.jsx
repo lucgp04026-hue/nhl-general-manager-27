@@ -1,11 +1,19 @@
 
 import { teams } from "./data/teams.js";
 import { players } from "./data/players.js";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 
 const joueurs = players;
+
+function normaliserNom(nom) {
+  return (nom || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 function App() {
   const [onglet, setOnglet] = useState("Accueil");
@@ -15,6 +23,51 @@ function App() {
   const [joueurSelectionne, setJoueurSelectionne] = useState(null);
   const [saison, setSaison] = useState("2026-2027");
   const [message, setMessage] = useState("Bienvenue dans ton bureau de DG!");
+  const [photosJoueurs, setPhotosJoueurs] = useState({});
+
+  // Chargement des portraits officiels NHL
+  useEffect(() => {
+    async function chargerPhotos() {
+      try {
+        const reponse = await fetch(
+          "https://api-web.nhle.com/v1/roster/MTL/20262027"
+        );
+
+        if (!reponse.ok) {
+          throw new Error("Erreur de chargement des photos");
+        }
+
+        const donnees = await reponse.json();
+
+        const effectif = [
+          ...(donnees.forwards || []),
+          ...(donnees.defensemen || []),
+          ...(donnees.goalies || [])
+        ];
+
+        const photos = {};
+
+        effectif.forEach(joueur => {
+          const nom = [
+            joueur.firstName?.default,
+            joueur.lastName?.default
+          ].filter(Boolean).join(" ");
+
+          if (nom && joueur.headshot) {
+            photos[normaliserNom(nom)] = joueur.headshot;
+          }
+        });
+
+        setPhotosJoueurs(photos);
+        console.log("Portraits NHL chargés :", Object.keys(photos).length);
+
+      } catch (erreur) {
+        console.error("Erreur photos NHL :", erreur);
+      }
+    }
+
+    chargerPhotos();
+  }, []);
 
   function simulerMatch() {
     if (victoires + defaites >= 82) {
@@ -26,34 +79,56 @@ function App() {
       setVictoires(v => v + 1);
       setMessage("Victoire! Ton équipe remporte le match!");
     } else {
-      setDefaites(d => d + 1);
+      setDefaites(v => v + 1);
       setMessage("Défaite. Il faudra rebondir au prochain match.");
     }
+  }
+
+  function afficherPhoto(joueur) {
+    const portrait = photosJoueurs[normaliserNom(joueur.nom)];
+
+    return (
+      <div style={{ textAlign: "center" }}>
+        {portrait ? (
+          <img
+            src={portrait}
+            alt={joueur.nom}
+            onError={e => {
+              e.currentTarget.style.display = "none";
+              const secours = e.currentTarget.parentElement.querySelector(
+                ".photo-secours"
+              );
+              if (secours) secours.style.display = "block";
+            }}
+            style={{
+              width: "180px",
+              height: "180px",
+              objectFit: "contain",
+              borderRadius: "12px"
+            }}
+          />
+        ) : null}
+
+        <div
+          className="photo-secours"
+          style={{
+            fontSize: "90px",
+            display: portrait ? "none" : "block"
+          }}
+        >
+          🏒
+        </div>
+      </div>
+    );
   }
 
   function contenu() {
     if (joueurSelectionne) {
       return (
         <section className="panel">
-          <div style={{ textAlign: "center" }}>
-            {joueurSelectionne.photo ? (
-              <img
-                src={joueurSelectionne.photo}
-                alt={joueurSelectionne.nom}
-                onError={e => {
-                  e.currentTarget.style.display = "none";
-                }}
-                style={{
-                  width: "180px",
-                  height: "180px",
-                  objectFit: "contain",
-                  borderRadius: "12px"
-                }}
-              />
-            ) : (
-              <div style={{ fontSize: "90px" }}>🏒</div>
-            )}
+          {afficherPhoto(joueurSelectionne)}
 
+          <div style={{ textAlign: "center" }}>
             <h2>{joueurSelectionne.nom}</h2>
             <h3>#{joueurSelectionne.numero}</h3>
           </div>
@@ -165,14 +240,17 @@ function App() {
       return (
         <section className="panel">
           <h2>Finances de la franchise</h2>
+
           <div className="stat">
             <span>Plafond salarial</span>
             <b>À configurer</b>
           </div>
+
           <div className="stat">
             <span>Budget de l'équipe</span>
             <b>À configurer</b>
           </div>
+
           <p>La gestion financière complète sera ajoutée prochainement.</p>
         </section>
       );
@@ -221,10 +299,12 @@ function App() {
             <small>VICTOIRES</small>
             <strong>{victoires}</strong>
           </div>
+
           <div>
             <small>DÉFAITES</small>
             <strong>{defaites}</strong>
           </div>
+
           <div>
             <small>MATCHS JOUÉS</small>
             <strong>{victoires + defaites}/82</strong>
@@ -251,6 +331,7 @@ function App() {
 
       <section className="hero">
         <p>À TOI DE BÂTIR UNE DYNASTIE</p>
+
         <h1>
           DEVENEZ LE MAÎTRE<br />
           DE VOTRE FRANCHISE.
