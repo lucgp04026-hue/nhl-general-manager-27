@@ -1,6 +1,6 @@
 
 export const players = [
-  { nom: "Nick Suzuki", pos: "C", age: 27, ovr: 91, salaire: 7.875, equipe: "Canadiens de Montréal" },
+  { nom: "Nick Suzuki", numero: 14, pos: "C", age: 27, ovr: 91, salaire: 7.875, equipe: "Canadiens de Montréal" },
   { nom: "Cole Caufield", pos: "AD", age: 25, ovr: 91, salaire: 7.85, equipe: "Canadiens de Montréal" },
   { nom: "Juraj Slafkovský", pos: "AG", age: 22, ovr: 87, salaire: 7.6, equipe: "Canadiens de Montréal" },
   { nom: "Lane Hutson", pos: "D", age: 22, ovr: 94, salaire: 8.85, equipe: "Canadiens de Montréal" },
