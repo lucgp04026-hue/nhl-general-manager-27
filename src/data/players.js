@@ -1,6 +1,6 @@
 
 export const players = [
-  { nom: "Nick Suzuki", numero: 14, pos: "C", age: 27, ovr: 91, salaire: 7.875, equipe: "Canadiens de Montréal", photo: "https://assets.nhle.com/mugs/nhl/20262027/MTL/8480801.png" },
+  { nom: "Nick Suzuki", numero: 14, pos: "C", age: 27, ovr: 91, salaire: 7.875, equipe: "Canadiens de Montréal", photo: "https://assets.nhle.com/mugs/nhl/20262027/MTL/8480018.png" },
   { nom: "Cole Caufield", numero: 13, pos: "AD", age: 25, ovr: 91, salaire: 7.85, equipe: "Canadiens de Montréal" },
   { nom: "Juraj Slafkovský", numero: 20, pos: "AG", age: 22, ovr: 87, salaire: 7.6, equipe: "Canadiens de Montréal" },
   { nom: "Lane Hutson", numero: 48, pos: "D", age: 22, ovr: 94, salaire: 8.85, equipe: "Canadiens de Montréal" },
