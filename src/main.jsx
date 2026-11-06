@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { teams } from "./data/teams.js";
@@ -7,42 +7,12 @@ import { players } from "./data/players.js";
 import { chargerTousLesJoueurs } from "./data/nhlRoster.js";
 import { chargerContrats } from "./data/contrats.js";
 
+import {
+  preparerJoueurs,
+  developperJoueurs
+} from "./data/progression.js";
+
 import "./style.css";
-
-function PhotoJoueur({ joueur, taille = 65 }) {
-  const [erreur, setErreur] = useState(false);
-
-  return (
-    <div
-      style={{
-        width: taille,
-        height: taille,
-        borderRadius: "50%",
-        overflow: "hidden",
-        background: "#263449",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0
-      }}
-    >
-      {joueur.photo && !erreur ? (
-        <img
-          src={joueur.photo}
-          alt={joueur.nom}
-          onError={() => setErreur(true)}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover"
-          }}
-        />
-      ) : (
-        <span style={{ fontSize: taille / 2 }}>🏒</span>
-      )}
-    </div>
-  );
-}
 
 function App() {
   const equipeDepart =
@@ -50,185 +20,333 @@ function App() {
 
   const [onglet, setOnglet] = useState("Accueil");
   const [equipeSelectionnee, setEquipeSelectionnee] =
-    useState(equipeDepart?.id || "MTL");
+    useState(equipeDepart);
 
   const [effectif, setEffectif] = useState(players);
-  const [chargementNHL, setChargementNHL] = useState(true);
-  const [erreurChargement, setErreurChargement] = useState("");
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState("");
 
+  const [saison, setSaison] = useState(2026);
   const [victoires, setVictoires] = useState(0);
   const [defaites, setDefaites] = useState(0);
   const [defaitesProlongation, setDefaitesProlongation] =
     useState(0);
 
-  const [joueurSelectionne, setJoueurSelectionne] = useState(null);
-  const [joueurEchange, setJoueurEchange] = useState("");
-  const [messageEchange, setMessageEchange] = useState("");
+  const [joueurEchange1, setJoueurEchange1] = useState("");
+  const [joueurEchange2, setJoueurEchange2] = useState("");
 
-  const equipeActuelle = teams.find(
-    (equipe) => equipe.id === equipeSelectionnee
-  );
-
-  const joueursEquipe = effectif.filter(
-    (joueur) => joueur.equipe === equipeActuelle?.name
-  );
-
-  const totalMatchs =
-    victoires + defaites + defaitesProlongation;
-
-  const points = victoires * 2 + defaitesProlongation;
-
-  const pourcentage =
-    totalMatchs > 0
-      ? Math.round((victoires / totalMatchs) * 100)
-      : 0;
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     let actif = true;
 
-    async function chargerJeu() {
+    async function chargerDonnees() {
       try {
-        const liste = await chargerTousLesJoueurs(teams, players);
+        setChargement(true);
+        setErreur("");
 
-        if (!actif || liste.length === 0) return;
-
-        setEffectif(liste);
+        const liste = await chargerTousLesJoueurs(
+          teams,
+          players
+        );
 
         const listeAvecContrats = await chargerContrats(liste);
 
         if (actif) {
-          setEffectif(listeAvecContrats);
-          setErreurChargement("");
+          setEffectif(preparerJoueurs(listeAvecContrats));
         }
-      } catch (erreur) {
-        console.error("Erreur de chargement NHL :", erreur);
+      } catch (error) {
+        console.error("Erreur de chargement :", error);
 
         if (actif) {
-          setErreurChargement(
-            "Certaines données NHL n'ont pas pu être chargées."
+          setErreur(
+            "Impossible de charger toutes les données NHL. Les joueurs de départ sont affichés."
           );
+
+          setEffectif(preparerJoueurs(players));
         }
       } finally {
-        if (actif) setChargementNHL(false);
+        if (actif) {
+          setChargement(false);
+        }
       }
     }
 
-    chargerJeu();
+    chargerDonnees();
 
     return () => {
       actif = false;
     };
   }, []);
 
+  const joueursEquipe = effectif.filter(
+    (joueur) => joueur.equipe === equipeSelectionnee.name
+  );
+
+  const totalMasseSalariale = joueursEquipe.reduce(
+    (total, joueur) => total + (Number(joueur.salaire) || 0),
+    0
+  );
+
+  const totalJoueurs = joueursEquipe.length;
+
+  const styleBouton = {
+    padding: "11px 18px",
+    border: "none",
+    borderRadius: "8px",
+    background: "#164e91",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "bold",
+    margin: "5px"
+  };
+
+  const styleCarte = {
+    background: "#172638",
+    color: "white",
+    borderRadius: "12px",
+    padding: "15px",
+    margin: "10px 0",
+    border: "1px solid #34465c"
+  };
+
+  const styleSelect = {
+    padding: "10px",
+    borderRadius: "7px",
+    margin: "5px",
+    maxWidth: "100%"
+  };
+
   function simulerMatch() {
     const resultat = Math.random();
 
-    if (resultat < 0.45) {
-      setVictoires((v) => v + 1);
-      alert("Victoire ! 🏆");
-    } else if (resultat < 0.85) {
-      setDefaites((d) => d + 1);
-      alert("Défaite.");
+    if (resultat < 0.55) {
+      setVictoires((ancien) => ancien + 1);
+      setMessage("Victoire ! 🏒");
+    } else if (resultat < 0.75) {
+      setDefaitesProlongation((ancien) => ancien + 1);
+      setMessage("Défaite en prolongation.");
     } else {
-      setDefaitesProlongation((d) => d + 1);
-      alert("Défaite en prolongation.");
+      setDefaites((ancien) => ancien + 1);
+      setMessage("Défaite.");
     }
   }
 
-  function recommencerSaison() {
-    if (!window.confirm("Recommencer la saison ?")) return;
+  function prochaineSaison() {
+    const confirmer = window.confirm(
+      "Terminer la saison et faire progresser tous les joueurs ?"
+    );
+
+    if (!confirmer) return;
+
+    setEffectif((anciensJoueurs) =>
+      developperJoueurs(anciensJoueurs)
+    );
+
+    setSaison((ancienneSaison) => ancienneSaison + 1);
 
     setVictoires(0);
     setDefaites(0);
     setDefaitesProlongation(0);
+
+    setMessage("La nouvelle saison commence ! 🏒");
   }
 
   function effectuerEchange() {
-    if (!joueurSelectionne || !joueurEchange) {
-      setMessageEchange("Sélectionne deux joueurs.");
+    if (!joueurEchange1 || !joueurEchange2) {
+      setMessage("Sélectionne deux joueurs.");
       return;
     }
 
-    const joueurCible = effectif.find(
-      (joueur) => String(joueur.idNhl) === String(joueurEchange)
+    if (joueurEchange1 === joueurEchange2) {
+      setMessage("Tu dois sélectionner deux joueurs différents.");
+      return;
+    }
+
+    const index1 = Number(joueurEchange1);
+    const index2 = Number(joueurEchange2);
+
+    const joueur1 = effectif[index1];
+    const joueur2 = effectif[index2];
+
+    if (!joueur1 || !joueur2) {
+      setMessage("Échange impossible.");
+      return;
+    }
+
+    if (joueur1.equipe === joueur2.equipe) {
+      setMessage("Ces deux joueurs appartiennent à la même équipe.");
+      return;
+    }
+
+    const nouvelEffectif = [...effectif];
+
+    nouvelEffectif[index1] = {
+      ...joueur1,
+      equipe: joueur2.equipe
+    };
+
+    nouvelEffectif[index2] = {
+      ...joueur2,
+      equipe: joueur1.equipe
+    };
+
+    setEffectif(nouvelEffectif);
+
+    setJoueurEchange1("");
+    setJoueurEchange2("");
+
+    setMessage(
+      "Échange effectué entre " +
+        joueur1.nom +
+        " et " +
+        joueur2.nom +
+        " !"
     );
-
-    if (!joueurCible) {
-      setMessageEchange("Joueur introuvable.");
-      return;
-    }
-
-    if (joueurSelectionne.idNhl === joueurCible.idNhl) {
-      setMessageEchange("Impossible d'échanger un joueur contre lui-même.");
-      return;
-    }
-
-    const nouvelleListe = effectif.map((joueur) => {
-      if (joueur.idNhl === joueurSelectionne.idNhl) {
-        return {
-          ...joueur,
-          equipe: joueurCible.equipe
-        };
-      }
-
-      if (joueur.idNhl === joueurCible.idNhl) {
-        return {
-          ...joueur,
-          equipe: joueurSelectionne.equipe
-        };
-      }
-
-      return joueur;
-    });
-
-    setEffectif(nouvelleListe);
-    setJoueurSelectionne(null);
-    setJoueurEchange("");
-    setMessageEchange("Échange effectué !");
   }
 
-  const styleBouton = {
-    background: "#1769aa",
-    color: "white",
-    border: "none",
-    borderRadius: 8,
-    padding: "10px 15px",
-    cursor: "pointer",
-    fontWeight: "bold"
-  };
+  function afficherSalaire(salaire) {
+    const montant = Number(salaire) || 0;
 
-  const styleCarte = {
-    background: "#172438",
-    color: "white",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12
-  };
+    if (montant === 0) return "Non disponible";
+
+    return montant.toFixed(2) + " M$";
+  }
+
+  function afficherPhoto(joueur) {
+    if (joueur.photo) {
+      return (
+        <img
+          src={joueur.photo}
+          alt={joueur.nom}
+          style={{
+            width: "85px",
+            height: "85px",
+            objectFit: "cover",
+            borderRadius: "10px",
+            background: "#26394e"
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      );
+    }
+
+    return (
+      <div
+        style={{
+          width: "85px",
+          height: "85px",
+          borderRadius: "10px",
+          background: "#26394e",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "28px"
+        }}
+      >
+        🏒
+      </div>
+    );
+  }
+
+  function afficherJoueur(joueur, index) {
+    return (
+      <div key={joueur.idNhl || joueur.nom + index} style={styleCarte}>
+        <div
+          style={{
+            display: "flex",
+            gap: "15px",
+            alignItems: "center",
+            flexWrap: "wrap"
+          }}
+        >
+          {afficherPhoto(joueur)}
+
+          <div style={{ flex: 1, minWidth: "160px" }}>
+            <h3 style={{ margin: "0 0 8px" }}>
+              {joueur.numero ? `#${joueur.numero} ` : ""}
+              {joueur.nom}
+            </h3>
+
+            <p style={{ margin: "4px 0" }}>
+              {joueur.pos || "Position inconnue"} · {joueur.age || "?"} ans
+            </p>
+
+            <p style={{ margin: "4px 0" }}>
+              Équipe : {joueur.equipe}
+            </p>
+
+            <p style={{ margin: "4px 0" }}>
+              Salaire : {afficherSalaire(joueur.salaire)}
+            </p>
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: "28px",
+                fontWeight: "bold",
+                color: "#69c1ff"
+              }}
+            >
+              {joueur.ovr ?? 75}
+            </div>
+            <small>OVR</small>
+          </div>
+        </div>
+
+        <hr style={{ borderColor: "#34465c" }} />
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "10px"
+          }}
+        >
+          <span>
+            Potentiel : <strong>{joueur.potentiel ?? joueur.ovr ?? 75}</strong>
+          </span>
+
+          <span>
+            Progression :{" "}
+            <strong>
+              {(joueur.progressionAnnuelle ?? 0) > 0
+                ? `+${joueur.progressionAnnuelle}`
+                : joueur.progressionAnnuelle ?? 0}
+            </strong>
+          </span>
+        </div>
+
+        {joueur.contratDisponible && (
+          <p style={{ marginBottom: 0 }}>
+            Contrat : {joueur.finContrat || joueur.anneeFin || "Données disponibles"}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#0b1422",
+        background: "#0b1624",
         color: "white",
-        fontFamily: "Arial, sans-serif",
-        paddingBottom: 30
+        padding: "15px",
+        fontFamily: "Arial, sans-serif"
       }}
     >
-      <header
-        style={{
-          background: "#101e32",
-          padding: 20,
-          textAlign: "center",
-          borderBottom: "3px solid #1769aa"
-        }}
-      >
-        <h1 style={{ margin: 0 }}>
+      <header style={{ textAlign: "center", padding: "15px 0" }}>
+        <h1 style={{ marginBottom: "5px" }}>
           🏒 NHL GENERAL MANAGER 27
         </h1>
 
-        <p style={{ color: "#aabbd0" }}>
-          Construis ton équipe. Gère ta franchise. Gagne la Coupe !
+        <p style={{ color: "#a9c5df" }}>
+          Saison {saison}-{String(saison + 1).slice(-2)}
         </p>
       </header>
 
@@ -237,57 +355,87 @@ function App() {
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "center",
-          gap: 8,
-          padding: 15,
-          background: "#101e32"
+          gap: "5px",
+          marginBottom: "20px"
         }}
       >
-        {[
-          "Accueil",
-          "Effectif",
-          "Échanges",
-          "Saison",
-          "Finances"
-        ].map((nom) => (
-          <button
-            key={nom}
-            onClick={() => setOnglet(nom)}
-            style={{
-              ...styleBouton,
-              background: onglet === nom ? "#e63946" : "#263449"
-            }}
-          >
-            {nom}
-          </button>
-        ))}
+        {["Accueil", "Effectif", "Échanges", "Saison", "Finances"].map(
+          (nom) => (
+            <button
+              key={nom}
+              onClick={() => {
+                setOnglet(nom);
+                setMessage("");
+              }}
+              style={{
+                ...styleBouton,
+                background: onglet === nom ? "#2879c7" : "#26394e"
+              }}
+            >
+              {nom}
+            </button>
+          )
+        )}
       </nav>
 
-      <main
-        style={{
-          maxWidth: 1100,
-          margin: "auto",
-          padding: 15
-        }}
-      >
-        <div style={styleCarte}>
-          <strong>Équipe sélectionnée :</strong>
+      {chargement && (
+        <p style={{ textAlign: "center" }}>
+          Chargement des joueurs NHL...
+        </p>
+      )}
+
+      {erreur && (
+        <p style={{ color: "#ffcc66", textAlign: "center" }}>
+          {erreur}
+        </p>
+      )}
+
+      {message && (
+        <div
+          style={{
+            ...styleCarte,
+            textAlign: "center",
+            background: "#173c31"
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      {onglet === "Accueil" && (
+        <section>
+          <h2>Bienvenue dans ton équipe !</h2>
+
+          <div style={styleCarte}>
+            <h2>{equipeSelectionnee.name}</h2>
+
+            <p>
+              Conférence : {equipeSelectionnee.conference}
+            </p>
+
+            <p>
+              Division : {equipeSelectionnee.division}
+            </p>
+
+            <p>Joueurs : {totalJoueurs}</p>
+
+            <p>
+              Masse salariale :{" "}
+              {totalMasseSalariale.toFixed(2)} M$
+            </p>
+          </div>
+
+          <h3>Choisir une équipe</h3>
 
           <select
-            value={equipeSelectionnee}
+            style={styleSelect}
+            value={equipeSelectionnee.id}
             onChange={(e) => {
-              setEquipeSelectionnee(e.target.value);
-              setJoueurSelectionne(null);
-              setMessageEchange("");
-            }}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: 12,
-              marginTop: 10,
-              borderRadius: 8,
-              background: "#263449",
-              color: "white",
-              border: "1px solid #52647b"
+              const equipe = teams.find(
+                (item) => item.id === e.target.value
+              );
+
+              if (equipe) setEquipeSelectionnee(equipe);
             }}
           >
             {teams.map((equipe) => (
@@ -296,287 +444,175 @@ function App() {
               </option>
             ))}
           </select>
-        </div>
 
-        {chargementNHL && (
+          <p style={{ color: "#a9c5df" }}>
+            Choisis ton équipe pour consulter son effectif et ses finances.
+          </p>
+        </section>
+      )}
+
+      {onglet === "Effectif" && (
+        <section>
+          <h2>Effectif - {equipeSelectionnee.name}</h2>
+
+          <p>
+            {joueursEquipe.length} joueur(s) dans l'équipe
+          </p>
+
+          <select
+            style={styleSelect}
+            value={equipeSelectionnee.id}
+            onChange={(e) => {
+              const equipe = teams.find(
+                (item) => item.id === e.target.value
+              );
+
+              if (equipe) setEquipeSelectionnee(equipe);
+            }}
+          >
+            {teams.map((equipe) => (
+              <option key={equipe.id} value={equipe.id}>
+                {equipe.name}
+              </option>
+            ))}
+          </select>
+
+          {joueursEquipe.length === 0 && (
+            <p>Aucun joueur trouvé pour cette équipe.</p>
+          )}
+
+          {joueursEquipe.map((joueur) =>
+            afficherJoueur(joueur, effectif.indexOf(joueur))
+          )}
+        </section>
+      )}
+
+      {onglet === "Échanges" && (
+        <section>
+          <h2>Marché des échanges</h2>
+
+          <p>
+            Sélectionne deux joueurs de deux équipes différentes.
+          </p>
+
           <div style={styleCarte}>
-            Chargement des effectifs et contrats NHL...
-          </div>
-        )}
+            <h3>Joueur offert</h3>
 
-        {erreurChargement && (
-          <div style={styleCarte}>
-            {erreurChargement}
-          </div>
-        )}
-
-        {onglet === "Accueil" && (
-          <>
-            <h2>Tableau de bord</h2>
-
-            <div style={styleCarte}>
-              <h2>{equipeActuelle?.name}</h2>
-              <p>Conférence : {equipeActuelle?.conference}</p>
-              <p>Division : {equipeActuelle?.division}</p>
-              <p>Joueurs : {joueursEquipe.length}</p>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                gap: 10
-              }}
+            <select
+              style={{ ...styleSelect, width: "100%" }}
+              value={joueurEchange1}
+              onChange={(e) => setJoueurEchange1(e.target.value)}
             >
-              <div style={styleCarte}>
-                <h3>Victoires</h3>
-                <h1>{victoires}</h1>
-              </div>
+              <option value="">Choisir un joueur</option>
 
-              <div style={styleCarte}>
-                <h3>Défaites</h3>
-                <h1>{defaites}</h1>
-              </div>
+              {effectif.map((joueur, index) => (
+                <option key={index} value={index}>
+                  {joueur.nom} - {joueur.equipe}
+                </option>
+              ))}
+            </select>
 
-              <div style={styleCarte}>
-                <h3>Prolongations</h3>
-                <h1>{defaitesProlongation}</h1>
-              </div>
+            <h3>Joueur demandé</h3>
 
-              <div style={styleCarte}>
-                <h3>Points</h3>
-                <h1>{points}</h1>
-              </div>
-            </div>
+            <select
+              style={{ ...styleSelect, width: "100%" }}
+              value={joueurEchange2}
+              onChange={(e) => setJoueurEchange2(e.target.value)}
+            >
+              <option value="">Choisir un joueur</option>
 
-            <div style={styleCarte}>
-              <h3>Saison 2026-2027</h3>
-              <p>Matchs joués : {totalMatchs}</p>
-              <p>Pourcentage de victoires : {pourcentage} %</p>
+              {effectif.map((joueur, index) => (
+                <option key={index} value={index}>
+                  {joueur.nom} - {joueur.equipe}
+                </option>
+              ))}
+            </select>
 
-              <button style={styleBouton} onClick={simulerMatch}>
-                Simuler un match
-              </button>
+            <button
+              style={styleBouton}
+              onClick={effectuerEchange}
+            >
+              Confirmer l'échange
+            </button>
+          </div>
+        </section>
+      )}
 
-              <button
-                style={{
-                  ...styleBouton,
-                  background: "#7a3440",
-                  marginLeft: 8
-                }}
-                onClick={recommencerSaison}
-              >
-                Recommencer
-              </button>
-            </div>
-          </>
-        )}
+      {onglet === "Saison" && (
+        <section>
+          <h2>Saison {saison}-{String(saison + 1).slice(-2)}</h2>
 
-        {onglet === "Effectif" && (
-          <>
-            <h2>Effectif de {equipeActuelle?.name}</h2>
+          <div style={styleCarte}>
+            <h3>Résultats de la saison</h3>
 
-            <p>{joueursEquipe.length} joueur(s)</p>
+            <p>Victoires : {victoires}</p>
+            <p>Défaites : {defaites}</p>
+            <p>Défaites en prolongation : {defaitesProlongation}</p>
 
-            {joueursEquipe.length === 0 ? (
-              <div style={styleCarte}>
-                Aucun joueur chargé pour cette équipe.
-              </div>
-            ) : (
-              joueursEquipe.map((joueur, index) => (
-                <div
-                  key={`${joueur.idNhl || joueur.nom}-${index}`}
-                  style={{
-                    ...styleCarte,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12
-                  }}
-                >
-                  <PhotoJoueur joueur={joueur} />
+            <p>
+              Points : {victoires * 2 + defaitesProlongation}
+            </p>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <strong>{joueur.nom}</strong>
+            <button
+              style={styleBouton}
+              onClick={simulerMatch}
+            >
+              Simuler un match
+            </button>
+          </div>
 
-                    <p style={{ margin: "5px 0", color: "#aabbd0" }}>
-                      #{joueur.numero} · {joueur.pos} · {joueur.age} ans
-                    </p>
+          <div style={styleCarte}>
+            <h3>Développement des joueurs</h3>
 
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>OVR :</strong> {joueur.ovr ?? 75}
-                    </p>
+            <p>
+              Les jeunes joueurs peuvent progresser selon leur potentiel.
+            </p>
 
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>Salaire annuel :</strong>{" "}
-                      {joueur.contratDisponible && joueur.salaire > 0
-                        ? `${joueur.salaire.toFixed(2)} M$`
-                        : "Non disponible"}
-                    </p>
+            <p>
+              Les joueurs plus âgés peuvent perdre des points OVR.
+            </p>
 
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>Durée :</strong>{" "}
-                      {joueur.contratDuree
-                        ? `${joueur.contratDuree} ans`
-                        : "Non disponible"}
-                    </p>
+            <button
+              style={{
+                ...styleBouton,
+                background: "#18834a"
+              }}
+              onClick={prochaineSaison}
+            >
+              Terminer la saison et avancer
+            </button>
+          </div>
+        </section>
+      )}
 
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>Expiration :</strong>{" "}
-                      {joueur.contratFin || "Non disponible"}
-                    </p>
+      {onglet === "Finances" && (
+        <section>
+          <h2>Finances - {equipeSelectionnee.name}</h2>
 
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>Statut :</strong>{" "}
-                      {joueur.statutFinContrat || "Non disponible"}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </>
-        )}
+          <div style={styleCarte}>
+            <h3>Masse salariale</h3>
 
-        {onglet === "Échanges" && (
-          <>
-            <h2>Centre des échanges</h2>
+            <p>
+              Joueurs : {totalJoueurs}
+            </p>
 
-            <div style={styleCarte}>
-              <h3>1. Choisir ton joueur</h3>
+            <h2>
+              {totalMasseSalariale.toFixed(2)} M$
+            </h2>
 
-              <select
-                value={joueurSelectionne?.idNhl || ""}
-                onChange={(e) => {
-                  const joueur = effectif.find(
-                    (j) =>
-                      String(j.idNhl) === e.target.value &&
-                      j.equipe === equipeActuelle?.name
-                  );
-
-                  setJoueurSelectionne(joueur || null);
-                  setMessageEchange("");
-                }}
-                style={{
-                  width: "100%",
-                  padding: 12,
-                  borderRadius: 8
-                }}
-              >
-                <option value="">Choisir un joueur</option>
-
-                {joueursEquipe.map((joueur, index) => (
-                  <option
-                    key={`${joueur.idNhl}-${index}`}
-                    value={joueur.idNhl}
-                  >
-                    {joueur.nom}
-                  </option>
-                ))}
-              </select>
-
-              <h3>2. Choisir le joueur à recevoir</h3>
-
-              <select
-                value={joueurEchange}
-                onChange={(e) => {
-                  setJoueurEchange(e.target.value);
-                  setMessageEchange("");
-                }}
-                style={{
-                  width: "100%",
-                  padding: 12,
-                  borderRadius: 8
-                }}
-              >
-                <option value="">Choisir un joueur</option>
-
-                {effectif
-                  .filter(
-                    (joueur) =>
-                      joueur.equipe !== equipeActuelle?.name
-                  )
-                  .map((joueur, index) => (
-                    <option
-                      key={`${joueur.idNhl}-${index}`}
-                      value={joueur.idNhl}
-                    >
-                      {joueur.nom} — {joueur.equipe}
-                    </option>
-                  ))}
-              </select>
-
-              <button
-                onClick={effectuerEchange}
-                style={{ ...styleBouton, marginTop: 15 }}
-              >
-                Confirmer l'échange
-              </button>
-
-              {messageEchange && <p>{messageEchange}</p>}
-            </div>
-          </>
-        )}
-
-        {onglet === "Saison" && (
-          <>
-            <h2>Saison 2026-2027</h2>
-
-            <div style={styleCarte}>
-              <h3>Résultats de la saison</h3>
-              <p>Matchs joués : {totalMatchs}</p>
-              <p>Victoires : {victoires}</p>
-              <p>Défaites : {defaites}</p>
-              <p>Défaites en prolongation : {defaitesProlongation}</p>
-              <p>Points au classement : {points}</p>
-              <p>Pourcentage de victoires : {pourcentage} %</p>
-
-              <button style={styleBouton} onClick={simulerMatch}>
-                Jouer le prochain match
-              </button>
-            </div>
-
-            <div style={styleCarte}>
-              <h3>Classement</h3>
-              <p>
-                Le classement complet sera ajouté dans une prochaine étape.
-              </p>
-            </div>
-          </>
-        )}
-
-        {onglet === "Finances" && (
-          <>
-            <h2>Finances de la franchise</h2>
-
-            <div style={styleCarte}>
-              <h3>{equipeActuelle?.name}</h3>
-
-              <p>Nombre de joueurs : {joueursEquipe.length}</p>
-
-              <p>
-                Masse salariale connue :{" "}
-                {joueursEquipe
-                  .reduce(
-                    (total, joueur) =>
-                      total + (Number(joueur.salaire) || 0),
-                    0
-                  )
-                  .toFixed(2)}{" "}
-                M$
-              </p>
-
-              <p>
-                Les salaires manquants ne sont pas inclus dans le total.
-              </p>
-            </div>
-          </>
-        )}
-      </main>
+            <p>
+              Total des salaires des joueurs affichés dans l'effectif.
+            </p>
+          </div>
+        </section>
+      )}
 
       <footer
         style={{
           textAlign: "center",
-          padding: 20,
-          color: "#8395aa"
+          padding: "25px 5px",
+          color: "#7892aa",
+          fontSize: "12px"
         }}
       >
         NHL General Manager 27 · Jeu gratuit
@@ -585,8 +621,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+createRoot(document.getElementById("root")).render(<App />);
