@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { teams } from "./data/teams.js";
 import { players } from "./data/players.js";
 import { chargerTousLesJoueurs } from "./data/nhlRoster.js";
+import { chargerContrats } from "./data/contrats.js";
 
 import "./style.css";
 
@@ -85,25 +86,34 @@ function App() {
   useEffect(() => {
     let actif = true;
 
-    chargerTousLesJoueurs(teams, players)
-      .then((liste) => {
-        if (actif && liste.length > 0) {
-          setEffectif(liste);
+    async function chargerJeu() {
+      try {
+        const liste = await chargerTousLesJoueurs(teams, players);
+
+        if (!actif || liste.length === 0) return;
+
+        setEffectif(liste);
+
+        const listeAvecContrats = await chargerContrats(liste);
+
+        if (actif) {
+          setEffectif(listeAvecContrats);
           setErreurChargement("");
         }
-      })
-      .catch((erreur) => {
-        console.error("Erreur NHL :", erreur);
+      } catch (erreur) {
+        console.error("Erreur de chargement NHL :", erreur);
 
         if (actif) {
           setErreurChargement(
-            "Impossible de charger les effectifs NHL."
+            "Certaines données NHL n'ont pas pu être chargées."
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (actif) setChargementNHL(false);
-      });
+      }
+    }
+
+    chargerJeu();
 
     return () => {
       actif = false;
@@ -149,7 +159,7 @@ function App() {
     }
 
     if (joueurSelectionne.idNhl === joueurCible.idNhl) {
-      setMessageEchange("Tu ne peux pas échanger un joueur contre lui-même.");
+      setMessageEchange("Impossible d'échanger un joueur contre lui-même.");
       return;
     }
 
@@ -174,9 +184,7 @@ function App() {
     setEffectif(nouvelleListe);
     setJoueurSelectionne(null);
     setJoueurEchange("");
-    setMessageEchange(
-      "Échange effectué ! Les deux joueurs ont changé d'équipe."
-    );
+    setMessageEchange("Échange effectué !");
   }
 
   const styleBouton = {
@@ -246,8 +254,7 @@ function App() {
             onClick={() => setOnglet(nom)}
             style={{
               ...styleBouton,
-              background:
-                onglet === nom ? "#e63946" : "#263449"
+              background: onglet === nom ? "#e63946" : "#263449"
             }}
           >
             {nom}
@@ -263,9 +270,7 @@ function App() {
         }}
       >
         <div style={styleCarte}>
-          <label>
-            <strong>Équipe sélectionnée :</strong>
-          </label>
+          <strong>Équipe sélectionnée :</strong>
 
           <select
             value={equipeSelectionnee}
@@ -295,12 +300,12 @@ function App() {
 
         {chargementNHL && (
           <div style={styleCarte}>
-            Chargement des effectifs NHL...
+            Chargement des effectifs et contrats NHL...
           </div>
         )}
 
         {erreurChargement && (
-          <div style={{ ...styleCarte, color: "#ffb4b4" }}>
+          <div style={styleCarte}>
             {erreurChargement}
           </div>
         )}
@@ -311,15 +316,9 @@ function App() {
 
             <div style={styleCarte}>
               <h2>{equipeActuelle?.name}</h2>
-              <p>
-                Conférence : {equipeActuelle?.conference}
-              </p>
-              <p>
-                Division : {equipeActuelle?.division}
-              </p>
-              <p>
-                Joueurs dans l'effectif : {joueursEquipe.length}
-              </p>
+              <p>Conférence : {equipeActuelle?.conference}</p>
+              <p>Division : {equipeActuelle?.division}</p>
+              <p>Joueurs : {joueursEquipe.length}</p>
             </div>
 
             <div
@@ -355,10 +354,7 @@ function App() {
               <p>Matchs joués : {totalMatchs}</p>
               <p>Pourcentage de victoires : {pourcentage} %</p>
 
-              <button
-                style={styleBouton}
-                onClick={simulerMatch}
-              >
+              <button style={styleBouton} onClick={simulerMatch}>
                 Simuler un match
               </button>
 
@@ -380,9 +376,7 @@ function App() {
           <>
             <h2>Effectif de {equipeActuelle?.name}</h2>
 
-            <p>
-              {joueursEquipe.length} joueur(s) dans l'équipe
-            </p>
+            <p>{joueursEquipe.length} joueur(s)</p>
 
             {joueursEquipe.length === 0 ? (
               <div style={styleCarte}>
@@ -401,20 +395,40 @@ function App() {
                 >
                   <PhotoJoueur joueur={joueur} />
 
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <strong>{joueur.nom}</strong>
+
                     <p style={{ margin: "5px 0", color: "#aabbd0" }}>
                       #{joueur.numero} · {joueur.pos} · {joueur.age} ans
                     </p>
-                    <p style={{ margin: 0 }}>
-                      OVR : {joueur.ovr}
-                    </p>
-                  </div>
 
-                  <div style={{ textAlign: "right" }}>
-                    {joueur.salaire
-                      ? `${joueur.salaire} M$`
-                      : "Salaire à ajouter"}
+                    <p style={{ margin: "5px 0" }}>
+                      <strong>OVR :</strong> {joueur.ovr ?? 75}
+                    </p>
+
+                    <p style={{ margin: "5px 0" }}>
+                      <strong>Salaire annuel :</strong>{" "}
+                      {joueur.contratDisponible && joueur.salaire > 0
+                        ? `${joueur.salaire.toFixed(2)} M$`
+                        : "Non disponible"}
+                    </p>
+
+                    <p style={{ margin: "5px 0" }}>
+                      <strong>Durée :</strong>{" "}
+                      {joueur.contratDuree
+                        ? `${joueur.contratDuree} ans`
+                        : "Non disponible"}
+                    </p>
+
+                    <p style={{ margin: "5px 0" }}>
+                      <strong>Expiration :</strong>{" "}
+                      {joueur.contratFin || "Non disponible"}
+                    </p>
+
+                    <p style={{ margin: "5px 0" }}>
+                      <strong>Statut :</strong>{" "}
+                      {joueur.statutFinContrat || "Non disponible"}
+                    </p>
                   </div>
                 </div>
               ))
@@ -497,9 +511,7 @@ function App() {
                 Confirmer l'échange
               </button>
 
-              {messageEchange && (
-                <p>{messageEchange}</p>
-              )}
+              {messageEchange && <p>{messageEchange}</p>}
             </div>
           </>
         )}
@@ -517,10 +529,7 @@ function App() {
               <p>Points au classement : {points}</p>
               <p>Pourcentage de victoires : {pourcentage} %</p>
 
-              <button
-                style={styleBouton}
-                onClick={simulerMatch}
-              >
+              <button style={styleBouton} onClick={simulerMatch}>
                 Jouer le prochain match
               </button>
             </div>
@@ -528,8 +537,7 @@ function App() {
             <div style={styleCarte}>
               <h3>Classement</h3>
               <p>
-                Le classement complet de la LNH sera ajouté dans
-                la prochaine étape.
+                Le classement complet sera ajouté dans une prochaine étape.
               </p>
             </div>
           </>
@@ -542,9 +550,7 @@ function App() {
             <div style={styleCarte}>
               <h3>{equipeActuelle?.name}</h3>
 
-              <p>
-                Nombre de joueurs : {joueursEquipe.length}
-              </p>
+              <p>Nombre de joueurs : {joueursEquipe.length}</p>
 
               <p>
                 Masse salariale connue :{" "}
@@ -559,8 +565,7 @@ function App() {
               </p>
 
               <p>
-                Les salaires non renseignés ne sont pas inclus
-                dans ce total.
+                Les salaires manquants ne sont pas inclus dans le total.
               </p>
             </div>
           </>
