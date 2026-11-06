@@ -7,14 +7,6 @@ import "./style.css";
 
 const joueurs = players;
 
-function normaliserNom(nom) {
-  return (nom || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function App() {
   const [onglet, setOnglet] = useState("Accueil");
   const [victoires, setVictoires] = useState(0);
@@ -25,16 +17,16 @@ function App() {
   const [message, setMessage] = useState("Bienvenue dans ton bureau de DG!");
   const [photosJoueurs, setPhotosJoueurs] = useState({});
 
-  // Chargement des portraits officiels NHL
+  // Récupération des photos officielles NHL
   useEffect(() => {
     async function chargerPhotos() {
       try {
         const reponse = await fetch(
-          "https://api-web.nhle.com/v1/roster/MTL/20262027"
+          "https://api-web.nhle.com/v1/roster/MTL/current"
         );
 
         if (!reponse.ok) {
-          throw new Error("Erreur de chargement des photos");
+          throw new Error("Erreur API NHL : " + reponse.status);
         }
 
         const donnees = await reponse.json();
@@ -48,18 +40,14 @@ function App() {
         const photos = {};
 
         effectif.forEach(joueur => {
-          const nom = [
-            joueur.firstName?.default,
-            joueur.lastName?.default
-          ].filter(Boolean).join(" ");
-
-          if (nom && joueur.headshot) {
-            photos[normaliserNom(nom)] = joueur.headshot;
+          if (joueur.sweaterNumber && joueur.headshot) {
+            photos[String(joueur.sweaterNumber)] = joueur.headshot;
           }
         });
 
         setPhotosJoueurs(photos);
-        console.log("Portraits NHL chargés :", Object.keys(photos).length);
+
+        console.log("Photos NHL chargées :", photos);
 
       } catch (erreur) {
         console.error("Erreur photos NHL :", erreur);
@@ -84,8 +72,9 @@ function App() {
     }
   }
 
+  // Affichage de la photo du joueur selon son numéro
   function afficherPhoto(joueur) {
-    const portrait = photosJoueurs[normaliserNom(joueur.nom)];
+    const portrait = photosJoueurs[String(joueur.numero)];
 
     return (
       <div style={{ textAlign: "center" }}>
@@ -95,10 +84,15 @@ function App() {
             alt={joueur.nom}
             onError={e => {
               e.currentTarget.style.display = "none";
-              const secours = e.currentTarget.parentElement.querySelector(
-                ".photo-secours"
-              );
-              if (secours) secours.style.display = "block";
+
+              const secours =
+                e.currentTarget.parentElement.querySelector(
+                  ".photo-secours"
+                );
+
+              if (secours) {
+                secours.style.display = "block";
+              }
             }}
             style={{
               width: "180px",
@@ -123,6 +117,7 @@ function App() {
   }
 
   function contenu() {
+    // Fiche individuelle du joueur
     if (joueurSelectionne) {
       return (
         <section className="panel">
@@ -165,6 +160,7 @@ function App() {
       );
     }
 
+    // Effectif de l'équipe
     if (onglet === "Effectif") {
       const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
 
@@ -223,11 +219,13 @@ function App() {
       );
     }
 
+    // Échanges
     if (onglet === "Échanges") {
       return (
         <section className="panel">
           <h2>Centre des échanges</h2>
           <p>Prépare tes offres et améliore ton équipe.</p>
+
           <div className="placeholder">
             🤝<br />
             Le marché des échanges arrive bientôt!
@@ -236,6 +234,7 @@ function App() {
       );
     }
 
+    // Finances
     if (onglet === "Finances") {
       return (
         <section className="panel">
@@ -251,11 +250,14 @@ function App() {
             <b>À configurer</b>
           </div>
 
-          <p>La gestion financière complète sera ajoutée prochainement.</p>
+          <p>
+            La gestion financière complète sera ajoutée prochainement.
+          </p>
         </section>
       );
     }
 
+    // Saison
     if (onglet === "Saison") {
       return (
         <section className="panel">
@@ -276,21 +278,27 @@ function App() {
             <b>{defaites}</b>
           </div>
 
-          <button onClick={() => {
-            setSaison("2027-2028");
-            setVictoires(0);
-            setDefaites(0);
-            setMessage("Nouvelle saison commencée!");
-          }}>
+          <button
+            onClick={() => {
+              setSaison("2027-2028");
+              setVictoires(0);
+              setDefaites(0);
+              setMessage("Nouvelle saison commencée!");
+            }}
+          >
             Nouvelle saison
           </button>
         </section>
       );
     }
 
+    // Accueil
     return (
       <section className="panel">
-        <p className="eyebrow">TON BUREAU DE DIRECTEUR GÉNÉRAL</p>
+        <p className="eyebrow">
+          TON BUREAU DE DIRECTEUR GÉNÉRAL
+        </p>
+
         <h2>{equipe}</h2>
         <p>Saison {saison}</p>
 
@@ -317,7 +325,9 @@ function App() {
           Simuler le prochain match
         </button>
 
-        <p className="note">Objectif : remporter la Coupe Stanley!</p>
+        <p className="note">
+          Objectif : remporter la Coupe Stanley!
+        </p>
       </section>
     );
   }
@@ -325,7 +335,10 @@ function App() {
   return (
     <div className="app">
       <header>
-        <div className="logo">🏒 NHL GENERAL MANAGER 27</div>
+        <div className="logo">
+          🏒 NHL GENERAL MANAGER 27
+        </div>
+
         <span className="gratuit">100 % GRATUIT</span>
       </header>
 
