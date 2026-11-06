@@ -3,7 +3,58 @@ function limiter(valeur, minimum = 50, maximum = 99) {
   return Math.max(minimum, Math.min(maximum, Math.round(valeur)));
 }
 
-// Génère une valeur stable à partir du nom du joueur.
+// Cotes personnalisées des grandes vedettes NHL.
+// Ces évaluations sont celles du jeu NHL GM 27.
+const cotesVedettes = {
+  "connor mcdavid": { ovr: 97, potentiel: 99 },
+  "leon draisaitl": { ovr: 95, potentiel: 96 },
+  "nathan mackinnon": { ovr: 96, potentiel: 97 },
+  "nikita kucherov": { ovr: 95, potentiel: 95 },
+  "auston matthews": { ovr: 95, potentiel: 97 },
+  "sidney crosby": { ovr: 92, potentiel: 92 },
+  "alex ovechkin": { ovr: 90, potentiel: 90 },
+  "david pastrnak": { ovr: 94, potentiel: 95 },
+  "cale makar": { ovr: 95, potentiel: 98 },
+  "quinn hughes": { ovr: 94, potentiel: 97 },
+  "jack hughes": { ovr: 92, potentiel: 96 },
+  "kirill kaprizov": { ovr: 94, potentiel: 96 },
+  "artemi panarin": { ovr: 92, potentiel: 92 },
+  "brad marchand": { ovr: 90, potentiel: 90 },
+  "mark stone": { ovr: 90, potentiel: 90 },
+  "brayden point": { ovr: 92, potentiel: 94 },
+  "victor hedman": { ovr: 91, potentiel: 91 },
+  "mikko rantanen": { ovr: 93, potentiel: 95 },
+  "william nylander": { ovr: 92, potentiel: 94 },
+  "mitchell marner": { ovr: 93, potentiel: 95 },
+  "matthew tkachuk": { ovr: 94, potentiel: 96 },
+  "brady tkachuk": { ovr: 92, potentiel: 95 },
+  "jack eichel": { ovr: 93, potentiel: 95 },
+  "jason robertson": { ovr: 91, potentiel: 94 },
+  "roope hintz": { ovr: 90, potentiel: 93 },
+  "sebastian aho": { ovr: 92, potentiel: 94 },
+  "roman josi": { ovr: 92, potentiel: 92 },
+  "mitch marner": { ovr: 93, potentiel: 95 },
+  "cole caufield": { ovr: 90, potentiel: 95 },
+  "nick suzuki": { ovr: 89, potentiel: 93 },
+  "ivan demidov": { ovr: 85, potentiel: 96 },
+  "juraj slafkovsky": { ovr: 87, potentiel: 94 },
+  "igor shesterkin": { ovr: 95, potentiel: 97 },
+  "andrei vasilevskiy": { ovr: 94, potentiel: 94 },
+  "connor hellebuyck": { ovr: 94, potentiel: 94 },
+  "logan thompson": { ovr: 89, potentiel: 92 },
+  "thatcher demko": { ovr: 91, potentiel: 93 },
+  "jake oettinger": { ovr: 91, potentiel: 94 }
+};
+
+function normaliserNom(nom) {
+  return (nom || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z ]/g, "")
+    .trim();
+}
+
 function nombreStable(nom) {
   let resultat = 0;
 
@@ -46,12 +97,26 @@ function calculerPotentiel(joueur, ovr) {
   return limiter(Math.max(ovr, potentiel));
 }
 
-// Initialise les cotes sans remplacer les notes personnalisées.
+// Prépare les joueurs et applique les cotes personnalisées.
 export function preparerJoueurs(joueurs) {
   return joueurs.map((joueur) => {
-    const age = Number(joueur.age) || 24;
+    const nomNormalise = normaliserNom(joueur.nom);
+    const vedette = cotesVedettes[nomNormalise];
 
+    // Les cotes des vedettes ont priorité.
+    if (vedette) {
+      return {
+        ...joueur,
+        ovr: vedette.ovr,
+        potentiel: vedette.potentiel,
+        progressionAnnuelle: joueur.progressionAnnuelle || 0
+      };
+    }
+
+    const age = Number(joueur.age) || 24;
     const ovrExistant = Number(joueur.ovr);
+
+    // Préserve les évaluations personnalisées existantes.
     const ovr =
       Number.isFinite(ovrExistant) &&
       ovrExistant >= 50 &&
@@ -79,7 +144,7 @@ export function preparerJoueurs(joueurs) {
   });
 }
 
-// Fait avancer les joueurs d'une saison.
+// Développement annuel.
 export function developperJoueurs(joueurs) {
   return joueurs.map((joueur) => {
     const age = (Number(joueur.age) || 24) + 1;
@@ -88,7 +153,6 @@ export function developperJoueurs(joueurs) {
 
     let evolution = 0;
 
-    // Développement des jeunes.
     if (age <= 21 && ovr < potentiel) {
       evolution = 1 + Math.floor(Math.random() * 3);
     } else if (age <= 24 && ovr < potentiel) {
@@ -97,7 +161,6 @@ export function developperJoueurs(joueurs) {
       evolution = Math.floor(Math.random() * 2);
     }
 
-    // Régression graduelle avec l'âge.
     if (age >= 31) {
       evolution = -Math.floor(Math.random() * 2);
     }
