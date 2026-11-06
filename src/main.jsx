@@ -31,7 +31,32 @@ function App() {
     }
   }
 
-  function contenu() {
+  if (joueurSelectionne) {
+  return (
+    <section className="panel">
+      <h2>{joueurSelectionne.nom}</h2>
+      <div className="stat">
+        <span>Position</span>
+        <b>{joueurSelectionne.pos}</b>
+      </div>
+      <div className="stat">
+        <span>Âge</span>
+        <b>{joueurSelectionne.age} ans</b>
+      </div>
+      <div className="stat">
+        <span>Note générale</span>
+        <b>{joueurSelectionne.ovr} OVR</b>
+      </div>
+      <div className="stat">
+        <span>Salaire</span>
+        <b>{joueurSelectionne.salaire} M$</b>
+      </div>
+      <button onClick={() => setJoueurSelectionne(null)}>
+        Retour à l'effectif
+      </button>
+    </section>
+  );
+  }
     
 if (onglet === "Effectif") {
   const joueursEquipe = joueurs.filter(j => j.equipe === equipe);
