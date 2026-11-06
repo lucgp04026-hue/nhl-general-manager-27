@@ -6,15 +6,7 @@ import { createRoot } from "react-dom/client";
 import "./style.css";
 
 const joueurs = players;
-  { nom: "Nick Suzuki", pos: "C", age: 27, ovr: 90, salaire: 7.875 },
-  { nom: "Cole Caufield", pos: "AD", age: 25, ovr: 89, salaire: 7.85 },
-  { nom: "Juraj Slafkovský", pos: "AG", age: 22, ovr: 86, salaire: 7.6 },
-  { nom: "Lane Hutson", pos: "D", age: 22, ovr: 90, salaire: 0.95 },
-  { nom: "Noah Dobson", pos: "D", age: 26, ovr: 88, salaire: 9.5 },
-  { nom: "Kaiden Guhle", pos: "D", age: 24, ovr: 85, salaire: 5.55 },
-  { nom: "Alex Newhook", pos: "C/AG", age: 25, ovr: 82, salaire: 2.9 },
-  { nom: "Samuel Montembeault", pos: "G", age: 30, ovr: 84, salaire: 3.15 }
-];
+  
 
 function App() {
   const [onglet, setOnglet] = useState("Accueil");
