@@ -47,7 +47,7 @@ function App() {
             <span>Joueur</span><span>Pos.</span><span>Âge</span>
             <span>OVR</span><span>Salaire</span>
           </div>
-          {joueurs.map(j => <div className="ligne" key={j.nom}>
+          {joueurs.filter(j => j.equipe === equipe).map(j => ( <div className="ligne" key={j.nom}>
             <b>{j.nom}</b><span>{j.pos}</span><span>{j.age}</span>
             <b>{j.ovr}</b><span>{j.salaire} M$</span>
           </div>)}
