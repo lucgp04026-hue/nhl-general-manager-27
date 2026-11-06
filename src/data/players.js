@@ -25,7 +25,17 @@ export const players = [
   { nom: "Ivan Demidov", idNhl: 8484786, numero: 93, pos: "AD", age: 20, ovr: 89, salaire: 0.941, equipe: "Canadiens de Montréal", photo: photo(8484984) },
   { nom: "Oliver Kapanen", idNhl: 8480865, numero: 91, pos: "C", age: 23, ovr: 81, salaire: 0.943, equipe: "Canadiens de Montréal", photo: photo(8482775) },
   { nom: "Alexandre Texier", idNhl: 8480074, numero: 85, pos: "AG", age: 27, ovr: 82, salaire: 2.5, equipe: "Canadiens de Montréal", photo: photo(8480074) },
-  { nom: "Chris Kreider", idNhl: 8475184, numero: 22, pos: "AG", age: 35, ovr: 85, salaire: 2.15, equipe: "Canadiens de Montréal", photo: photo(8475184) },
+{
+  nom: "Chris Kreider",
+  idNhl: 8475184,
+  numero: 22,
+  pos: "AG",
+  age: 35,
+  ovr: 85,
+  salaire: 2.15,
+  equipe: "Canadiens de Montréal",
+  photo: "https://assets.nhle.com/mugs/nhl/20252026/ANA/8475184.png"
+},
   { nom: "Owen Beck", idNhl: 8483424, numero: 62, pos: "C", age: 22, ovr: 78, salaire: 0.79, equipe: "Canadiens de Montréal", photo: photo(8483424) },
   { nom: "Florian Xhekaj", idNhl: 8484403, numero: 63, pos: "AG", age: 22, ovr: 76, salaire: 0.943, equipe: "Canadiens de Montréal", photo: photo(8484403) },
   { nom: "Jakub Dobeš", idNhl: 8482487, numero: 75, pos: "G", age: 25, ovr: 84, salaire: 0.925, equipe: "Canadiens de Montréal", photo: photo(8482487) },
