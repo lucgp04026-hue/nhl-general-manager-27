@@ -1,5 +1,6 @@
 
 import { teams } from "./data/teams.js";
+import { players } from "./data/players.js";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
