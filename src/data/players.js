@@ -15,7 +15,6 @@ export const players = [
   { nom: "Alexandre Carrier", idNhl: 8478851, numero: 45, pos: "D", age: 30, ovr: 84, salaire: 3.75, equipe: "Canadiens de Montréal", photo: photo(8478851) },
   { nom: "Arber Xhekaj", idNhl: 8480813, numero: 72, pos: "D", age: 25, ovr: 82, salaire: 1.5, equipe: "Canadiens de Montréal", photo: photo(8480813) },
   { nom: "Adam Engström", idNhl: 8483686, numero: 42, pos: "D", age: 22, ovr: 79, salaire: 0.9, equipe: "Canadiens de Montréal", photo: photo(8483686) },
-  { nom: "Patrik Laine", idNhl: 8477492, numero: 92, pos: "AD", age: 28, ovr: 84, salaire: 8.7, equipe: "Canadiens de Montréal", photo: photo(8477492) },
   { nom: "Kirby Dach", idNhl: 8481523, numero: 77, pos: "C", age: 25, ovr: 83, salaire: 3.6, equipe: "Canadiens de Montréal", photo: photo(8481523) },
   { nom: "Alex Newhook", idNhl: 8481618, numero: 15, pos: "C/AG", age: 25, ovr: 82, salaire: 2.9, equipe: "Canadiens de Montréal", photo: photo(8481618) },
   { nom: "Phillip Danault", idNhl: 8476479, numero: 24, pos: "C", age: 33, ovr: 84, salaire: 5.5, equipe: "Canadiens de Montréal", photo: photo(8476479) },
