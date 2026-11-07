@@ -14,6 +14,35 @@ import {
 
 import "./style.css";
 
+const AGENTS_LIBRES_DEPART = [
+  {
+    id: 8479339,
+    nom: "Patrik Laine",
+    pos: "AD",
+    age: 28,
+    ovr: 84,
+    potentiel: 86,
+    salaireOffre: 1.5,
+    ancienSalaire: 8.7,
+    equipePrecedente: "Canadiens de Montréal",
+    type: "UFA",
+    photo: "https://assets.nhle.com/mugs/nhl/20262027/MTL/8479339.png"
+  },
+  {
+    id: 8475193,
+    nom: "Vladimir Tarasenko",
+    pos: "AD",
+    age: 34,
+    ovr: 83,
+    potentiel: 83,
+    salaireOffre: 1.5,
+    ancienSalaire: 4.75,
+    equipePrecedente: "Wild du Minnesota",
+    type: "UFA",
+    photo: "https://assets.nhle.com/mugs/nhl/20262027/FA/8475193.png"
+  }
+];
+
 function App() {
   const equipeDepart =
     teams.find((equipe) => equipe.id === "MTL") || teams[0];
@@ -25,6 +54,15 @@ function App() {
   const [effectif, setEffectif] = useState(players);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
+
+  const [agentsLibres, setAgentsLibres] = useState(
+    AGENTS_LIBRES_DEPART
+  );
+
+  const [offres, setOffres] = useState({
+    8479339: "1.5",
+    8475193: "1.5"
+  });
 
   const [saison, setSaison] = useState(2026);
   const [victoires, setVictoires] = useState(0);
@@ -80,14 +118,12 @@ function App() {
     (joueur) => joueur.equipe === equipeSelectionnee.name
   );
 
-  // Les salaires sont stockés en millions dans les données.
   const totalMasseSalariale = joueursEquipe.reduce(
     (total, joueur) =>
       total + (Number(joueur.salaire) || 0),
     0
   );
 
-  // Affichage des salaires en dollars américains complets.
   function afficherSalaire(salaire) {
     const montant = Number(salaire) || 0;
 
@@ -128,17 +164,13 @@ function App() {
   };
 
   function categoriePosition(position) {
-    const pos = String(position || "")
-      .toUpperCase()
-      .trim();
+    const pos = String(position || "").toUpperCase().trim();
 
     if (["G", "GK", "GB", "GOALIE"].includes(pos)) {
       return "gardiens";
     }
 
-    if (
-      ["D", "LD", "RD", "DEF", "DEFENSE"].includes(pos)
-    ) {
+    if (["D", "LD", "RD", "DEF", "DEFENSE"].includes(pos)) {
       return "defenseurs";
     }
 
@@ -268,6 +300,62 @@ function App() {
     );
   }
 
+  function faireOffre(agent) {
+    const montant = Number(offres[agent.id]);
+
+    if (!Number.isFinite(montant) || montant <= 0) {
+      setMessage("Entre un salaire valide pour faire une offre.");
+      return;
+    }
+
+    const dejaDansEquipe = effectif.some(
+      (joueur) =>
+        Number(joueur.idNhl) === agent.id ||
+        joueur.nom === agent.nom
+    );
+
+    if (dejaDansEquipe) {
+      setMessage("Ce joueur est déjà dans un effectif.");
+      return;
+    }
+
+    const confirmer = window.confirm(
+      `Signer ${agent.nom} avec ${equipeSelectionnee.name} pour ${afficherSalaire(montant)} par saison ?`
+    );
+
+    if (!confirmer) return;
+
+    const nouveauJoueur = {
+      idNhl: agent.id,
+      nom: agent.nom,
+      numero: null,
+      pos: agent.pos,
+      age: agent.age,
+      ovr: agent.ovr,
+      potentiel: agent.potentiel,
+      progressionAnnuelle: 0,
+      salaire: montant,
+      equipe: equipeSelectionnee.name,
+      photo: agent.photo,
+      contratDisponible: true,
+      salaireDisponible: true,
+      contratDuree: 1,
+      contratDebut: `${saison}-${String(saison + 1).slice(-2)}`,
+      contratFin: `${saison}-${String(saison + 1).slice(-2)}`,
+      typeContrat: "UFA"
+    };
+
+    setEffectif((anciens) => [...anciens, nouveauJoueur]);
+
+    setAgentsLibres((anciens) =>
+      anciens.filter((joueur) => joueur.id !== agent.id)
+    );
+
+    setMessage(
+      `${agent.nom} signe avec ${equipeSelectionnee.name} ! 📝`
+    );
+  }
+
   function afficherPhoto(joueur) {
     if (joueur.photo) {
       return (
@@ -329,8 +417,7 @@ function App() {
             </h3>
 
             <p style={{ margin: "4px 0" }}>
-              {joueur.pos || "Position inconnue"} ·{" "}
-              {joueur.age || "?"} ans
+              {joueur.pos || "Position inconnue"} · {joueur.age || "?"} ans
             </p>
 
             <p style={{ margin: "4px 0" }}>
@@ -367,10 +454,7 @@ function App() {
           }}
         >
           <span>
-            Potentiel :{" "}
-            <strong>
-              {joueur.potentiel ?? joueur.ovr ?? 75}
-            </strong>
+            Potentiel : <strong>{joueur.potentiel ?? joueur.ovr ?? 75}</strong>
           </span>
 
           <span>
@@ -385,10 +469,7 @@ function App() {
 
         {joueur.contratDisponible && (
           <p style={{ marginBottom: 0 }}>
-            Contrat :{" "}
-            {joueur.finContrat ||
-              joueur.anneeFin ||
-              "Données disponibles"}
+            Contrat : {joueur.finContrat || joueur.anneeFin || "Données disponibles"}
           </p>
         )}
       </div>
@@ -422,6 +503,98 @@ function App() {
     );
   }
 
+  function afficherAgentLibre(agent) {
+    return (
+      <div key={agent.id} style={styleCarte}>
+        <div
+          style={{
+            display: "flex",
+            gap: "15px",
+            alignItems: "center",
+            flexWrap: "wrap"
+          }}
+        >
+          {afficherPhoto(agent)}
+
+          <div style={{ flex: 1, minWidth: "160px" }}>
+            <h3 style={{ margin: "0 0 8px" }}>
+              {agent.nom}
+            </h3>
+
+            <p>{agent.pos} · {agent.age} ans</p>
+            <p>Ancienne équipe : {agent.equipePrecedente}</p>
+            <p>
+              Ancien salaire : {afficherSalaire(agent.ancienSalaire)}
+            </p>
+            <p>
+              Statut : <strong>{agent.type}</strong>
+            </p>
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: "30px",
+                fontWeight: "bold",
+                color: "#69c1ff"
+              }}
+            >
+              {agent.ovr}
+            </div>
+            <small>OVR</small>
+            <p>Potentiel : {agent.potentiel}</p>
+          </div>
+        </div>
+
+        <hr style={{ borderColor: "#34465c" }} />
+
+        <label>
+          Ton offre salariale annuelle (millions USD)
+        </label>
+
+        <input
+          type="number"
+          min="0.775"
+          step="0.1"
+          value={offres[agent.id] ?? ""}
+          onChange={(e) =>
+            setOffres((anciennes) => ({
+              ...anciennes,
+              [agent.id]: e.target.value
+            }))
+          }
+          style={{
+            ...styleSelect,
+            width: "100%",
+            boxSizing: "border-box",
+            background: "#0b1624",
+            color: "white",
+            border: "1px solid #52677d"
+          }}
+        />
+
+        <p>
+          Offre proposée :{" "}
+          <strong>
+            {afficherSalaire(Number(offres[agent.id]))}
+          </strong>
+          {" "}par saison
+        </p>
+
+        <button
+          style={{
+            ...styleBouton,
+            background: "#18834a",
+            width: "100%"
+          }}
+          onClick={() => faireOffre(agent)}
+        >
+          📝 Signer avec {equipeSelectionnee.name}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -451,24 +624,28 @@ function App() {
           marginBottom: "20px"
         }}
       >
-        {["Accueil", "Effectif", "Échanges", "Saison", "Finances"].map(
-          (nom) => (
-            <button
-              key={nom}
-              onClick={() => {
-                setOnglet(nom);
-                setMessage("");
-              }}
-              style={{
-                ...styleBouton,
-                background:
-                  onglet === nom ? "#2879c7" : "#26394e"
-              }}
-            >
-              {nom}
-            </button>
-          )
-        )}
+        {[
+          "Accueil",
+          "Effectif",
+          "Échanges",
+          "Agents libres",
+          "Saison",
+          "Finances"
+        ].map((nom) => (
+          <button
+            key={nom}
+            onClick={() => {
+              setOnglet(nom);
+              setMessage("");
+            }}
+            style={{
+              ...styleBouton,
+              background: onglet === nom ? "#2879c7" : "#26394e"
+            }}
+          >
+            {nom}
+          </button>
+        ))}
       </nav>
 
       {chargement && (
@@ -501,20 +678,11 @@ function App() {
 
           <div style={styleCarte}>
             <h2>{equipeSelectionnee.name}</h2>
-
-            <p>
-              Conférence : {equipeSelectionnee.conference}
-            </p>
-
-            <p>
-              Division : {equipeSelectionnee.division}
-            </p>
-
+            <p>Conférence : {equipeSelectionnee.conference}</p>
+            <p>Division : {equipeSelectionnee.division}</p>
             <p>Joueurs : {joueursEquipe.length}</p>
-
             <p>
-              Masse salariale :{" "}
-              {afficherSalaire(totalMasseSalariale)}
+              Masse salariale : {afficherSalaire(totalMasseSalariale)}
             </p>
           </div>
 
@@ -562,9 +730,7 @@ function App() {
             ))}
           </select>
 
-          <p>
-            Total : {joueursEquipe.length} joueurs
-          </p>
+          <p>Total : {joueursEquipe.length} joueurs</p>
 
           {afficherSection("ATTAQUANTS", attaquants, "🏒")}
           {afficherSection("DÉFENSEURS", defenseurs, "🛡️")}
@@ -613,13 +779,67 @@ function App() {
               ))}
             </select>
 
-            <button
-              style={styleBouton}
-              onClick={effectuerEchange}
-            >
+            <button style={styleBouton} onClick={effectuerEchange}>
               Confirmer l'échange
             </button>
           </div>
+        </section>
+      )}
+
+      {onglet === "Agents libres" && (
+        <section>
+          <h2>🏒 Marché des agents libres</h2>
+
+          <div style={styleCarte}>
+            <h3>Équipe qui fait une offre</h3>
+
+            <select
+              style={{ ...styleSelect, width: "100%" }}
+              value={equipeSelectionnee.id}
+              onChange={(e) => {
+                const equipe = teams.find(
+                  (item) => item.id === e.target.value
+                );
+
+                if (equipe) setEquipeSelectionnee(equipe);
+              }}
+            >
+              {teams.map((equipe) => (
+                <option key={equipe.id} value={equipe.id}>
+                  {equipe.name}
+                </option>
+              ))}
+            </select>
+
+            <p>
+              Masse salariale actuelle :{" "}
+              <strong>{afficherSalaire(totalMasseSalariale)}</strong>
+            </p>
+
+            <p>
+              Agents libres disponibles :{" "}
+              <strong>{agentsLibres.length}</strong>
+            </p>
+          </div>
+
+          <p style={{ color: "#a9c5df" }}>
+            Les offres salariales sont modifiables. Les signatures
+            ajoutent le joueur à ton effectif.
+          </p>
+
+          {agentsLibres.length === 0 ? (
+            <div style={styleCarte}>
+              Il n'y a plus d'agents libres dans cette liste.
+            </div>
+          ) : (
+            agentsLibres.map(afficherAgentLibre)
+          )}
+
+          <p style={{ color: "#91a8bd", fontSize: "12px" }}>
+            Liste de départ : joueurs confirmés sans contrat au
+            moment de la vérification. Elle doit être actualisée
+            pour suivre les nouvelles signatures réelles.
+          </p>
         </section>
       )}
 
@@ -634,18 +854,13 @@ function App() {
 
             <p>Victoires : {victoires}</p>
             <p>Défaites : {defaites}</p>
-            <p>
-              Défaites en prolongation : {defaitesProlongation}
-            </p>
+            <p>Défaites en prolongation : {defaitesProlongation}</p>
 
             <p>
               Points : {victoires * 2 + defaitesProlongation}
             </p>
 
-            <button
-              style={styleBouton}
-              onClick={simulerMatch}
-            >
+            <button style={styleBouton} onClick={simulerMatch}>
               Simuler un match
             </button>
           </div>
@@ -662,10 +877,7 @@ function App() {
             </p>
 
             <button
-              style={{
-                ...styleBouton,
-                background: "#18834a"
-              }}
+              style={{ ...styleBouton, background: "#18834a" }}
               onClick={prochaineSaison}
             >
               Terminer la saison et avancer
@@ -683,9 +895,7 @@ function App() {
 
             <p>Joueurs : {joueursEquipe.length}</p>
 
-            <h2>
-              {afficherSalaire(totalMasseSalariale)}
-            </h2>
+            <h2>{afficherSalaire(totalMasseSalariale)}</h2>
 
             <p>
               Total des salaires des joueurs affichés dans l'effectif.
