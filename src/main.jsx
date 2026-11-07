@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import { teams } from "./data/teams.js";
 import { players } from "./data/players.js";
+import { AGENTS_LIBRES_DEPART } from "./data/agentsLibres.js";
 import { chargerTousLesJoueurs } from "./data/nhlRoster.js";
 import { chargerContrats } from "./data/contrats.js";
 
@@ -13,35 +14,6 @@ import {
 } from "./data/progression.js";
 
 import "./style.css";
-
-const AGENTS_LIBRES_DEPART = [
-  {
-    id: 8479339,
-    nom: "Patrik Laine",
-    pos: "AD",
-    age: 28,
-    ovr: 84,
-    potentiel: 86,
-    salaireOffre: 1.5,
-    ancienSalaire: 8.7,
-    equipePrecedente: "Canadiens de Montréal",
-    type: "UFA",
-    photo: "https://assets.nhle.com/mugs/nhl/20262027/MTL/8479339.png"
-  },
-  {
-    id: 8475193,
-    nom: "Vladimir Tarasenko",
-    pos: "AD",
-    age: 34,
-    ovr: 83,
-    potentiel: 83,
-    salaireOffre: 1.5,
-    ancienSalaire: 4.75,
-    equipePrecedente: "Wild du Minnesota",
-    type: "UFA",
-    photo: "https://assets.nhle.com/mugs/nhl/20262027/FA/8475193.png"
-  }
-];
 
 function App() {
   const equipeDepart =
@@ -55,14 +27,17 @@ function App() {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
 
-  const [agentsLibres, setAgentsLibres] = useState(
-    AGENTS_LIBRES_DEPART
-  );
+  const [agentsLibres, setAgentsLibres] =
+    useState(AGENTS_LIBRES_DEPART);
 
-  const [offres, setOffres] = useState({
-    8479339: "1.5",
-    8475193: "1.5"
-  });
+  const [offres, setOffres] = useState(
+    Object.fromEntries(
+      AGENTS_LIBRES_DEPART.map((agent) => [
+        agent.id,
+        String(agent.offre)
+      ])
+    )
+  );
 
   const [saison, setSaison] = useState(2026);
   const [victoires, setVictoires] = useState(0);
@@ -164,13 +139,17 @@ function App() {
   };
 
   function categoriePosition(position) {
-    const pos = String(position || "").toUpperCase().trim();
+    const pos = String(position || "")
+      .toUpperCase()
+      .trim();
 
     if (["G", "GK", "GB", "GOALIE"].includes(pos)) {
       return "gardiens";
     }
 
-    if (["D", "LD", "RD", "DEF", "DEFENSE"].includes(pos)) {
+    if (
+      ["D", "LD", "RD", "DEF", "DEFENSE"].includes(pos)
+    ) {
       return "defenseurs";
     }
 
@@ -300,27 +279,31 @@ function App() {
     );
   }
 
-  function faireOffre(agent) {
+  // Modifier le montant d'une offre.
+  function modifierOffre(id, montant) {
+    setOffres((anciennes) => ({
+      ...anciennes,
+      [id]: montant
+    }));
+  }
+
+  // Signer un agent libre avec l'équipe sélectionnée.
+  function signerAgentLibre(agent) {
     const montant = Number(offres[agent.id]);
 
     if (!Number.isFinite(montant) || montant <= 0) {
-      setMessage("Entre un salaire valide pour faire une offre.");
-      return;
-    }
-
-    const dejaDansEquipe = effectif.some(
-      (joueur) =>
-        Number(joueur.idNhl) === agent.id ||
-        joueur.nom === agent.nom
-    );
-
-    if (dejaDansEquipe) {
-      setMessage("Ce joueur est déjà dans un effectif.");
+      setMessage("Entre un salaire annuel valide.");
       return;
     }
 
     const confirmer = window.confirm(
-      `Signer ${agent.nom} avec ${equipeSelectionnee.name} pour ${afficherSalaire(montant)} par saison ?`
+      "Signer " +
+        agent.nom +
+        " avec " +
+        equipeSelectionnee.name +
+        " pour " +
+        afficherSalaire(montant) +
+        " par saison ?"
     );
 
     if (!confirmer) return;
@@ -328,31 +311,39 @@ function App() {
     const nouveauJoueur = {
       idNhl: agent.id,
       nom: agent.nom,
-      numero: null,
-      pos: agent.pos,
+      pos: agent.position,
       age: agent.age,
+      equipe: equipeSelectionnee.name,
+      salaire: montant,
       ovr: agent.ovr,
       potentiel: agent.potentiel,
       progressionAnnuelle: 0,
-      salaire: montant,
-      equipe: equipeSelectionnee.name,
       photo: agent.photo,
-      contratDisponible: true,
-      salaireDisponible: true,
-      contratDuree: 1,
-      contratDebut: `${saison}-${String(saison + 1).slice(-2)}`,
-      contratFin: `${saison}-${String(saison + 1).slice(-2)}`,
-      typeContrat: "UFA"
+      contratDisponible: false,
+      finContrat: "Nouveau contrat",
+      numero: null
     };
 
-    setEffectif((anciens) => [...anciens, nouveauJoueur]);
+    // Évite les doublons si le joueur existe déjà dans les données.
+    setEffectif((anciens) => [
+      ...anciens.filter(
+        (joueur) =>
+          String(joueur.idNhl || joueur.id) !== String(agent.id)
+      ),
+      nouveauJoueur
+    ]);
 
+    // Retire le joueur du marché.
     setAgentsLibres((anciens) =>
       anciens.filter((joueur) => joueur.id !== agent.id)
     );
 
     setMessage(
-      `${agent.nom} signe avec ${equipeSelectionnee.name} ! 📝`
+      "🏒 " +
+        agent.nom +
+        " a signé avec " +
+        equipeSelectionnee.name +
+        " !"
     );
   }
 
@@ -417,7 +408,8 @@ function App() {
             </h3>
 
             <p style={{ margin: "4px 0" }}>
-              {joueur.pos || "Position inconnue"} · {joueur.age || "?"} ans
+              {joueur.pos || "Position inconnue"} ·{" "}
+              {joueur.age || "?"} ans
             </p>
 
             <p style={{ margin: "4px 0" }}>
@@ -454,7 +446,10 @@ function App() {
           }}
         >
           <span>
-            Potentiel : <strong>{joueur.potentiel ?? joueur.ovr ?? 75}</strong>
+            Potentiel :{" "}
+            <strong>
+              {joueur.potentiel ?? joueur.ovr ?? 75}
+            </strong>
           </span>
 
           <span>
@@ -469,7 +464,10 @@ function App() {
 
         {joueur.contratDisponible && (
           <p style={{ marginBottom: 0 }}>
-            Contrat : {joueur.finContrat || joueur.anneeFin || "Données disponibles"}
+            Contrat :{" "}
+            {joueur.finContrat ||
+              joueur.anneeFin ||
+              "Données disponibles"}
           </p>
         )}
       </div>
@@ -514,27 +512,38 @@ function App() {
             flexWrap: "wrap"
           }}
         >
-          {afficherPhoto(agent)}
+          {afficherPhoto({
+            nom: agent.nom,
+            photo: agent.photo
+          })}
 
           <div style={{ flex: 1, minWidth: "160px" }}>
             <h3 style={{ margin: "0 0 8px" }}>
               {agent.nom}
             </h3>
 
-            <p>{agent.pos} · {agent.age} ans</p>
-            <p>Ancienne équipe : {agent.equipePrecedente}</p>
-            <p>
-              Ancien salaire : {afficherSalaire(agent.ancienSalaire)}
+            <p style={{ margin: "4px 0" }}>
+              {agent.position} · {agent.age} ans
             </p>
-            <p>
-              Statut : <strong>{agent.type}</strong>
+
+            <p style={{ margin: "4px 0" }}>
+              Ancienne équipe : {agent.ancienneEquipe}
+            </p>
+
+            <p style={{ margin: "4px 0" }}>
+              Ancien salaire :{" "}
+              {afficherSalaire(agent.ancienSalaire)}
+            </p>
+
+            <p style={{ margin: "4px 0", color: "#69c1ff" }}>
+              Agent libre · {agent.statut}
             </p>
           </div>
 
           <div style={{ textAlign: "center" }}>
             <div
               style={{
-                fontSize: "30px",
+                fontSize: "28px",
                 fontWeight: "bold",
                 color: "#69c1ff"
               }}
@@ -542,43 +551,43 @@ function App() {
               {agent.ovr}
             </div>
             <small>OVR</small>
-            <p>Potentiel : {agent.potentiel}</p>
           </div>
         </div>
 
         <hr style={{ borderColor: "#34465c" }} />
 
-        <label>
-          Ton offre salariale annuelle (millions USD)
+        <p>
+          Potentiel : <strong>{agent.potentiel}</strong>
+        </p>
+
+        <label
+          style={{
+            display: "block",
+            marginBottom: "7px",
+            fontWeight: "bold"
+          }}
+        >
+          Offre salariale annuelle (millions USD)
         </label>
 
         <input
           type="number"
-          min="0.775"
+          min="0.1"
           step="0.1"
           value={offres[agent.id] ?? ""}
           onChange={(e) =>
-            setOffres((anciennes) => ({
-              ...anciennes,
-              [agent.id]: e.target.value
-            }))
+            modifierOffre(agent.id, e.target.value)
           }
           style={{
             ...styleSelect,
             width: "100%",
-            boxSizing: "border-box",
-            background: "#0b1624",
-            color: "white",
-            border: "1px solid #52677d"
+            boxSizing: "border-box"
           }}
         />
 
-        <p>
-          Offre proposée :{" "}
-          <strong>
-            {afficherSalaire(Number(offres[agent.id]))}
-          </strong>
-          {" "}par saison
+        <p style={{ color: "#a9c5df", fontSize: "13px" }}>
+          Offre actuelle :{" "}
+          {afficherSalaire(offres[agent.id])}
         </p>
 
         <button
@@ -587,9 +596,9 @@ function App() {
             background: "#18834a",
             width: "100%"
           }}
-          onClick={() => faireOffre(agent)}
+          onClick={() => signerAgentLibre(agent)}
         >
-          📝 Signer avec {equipeSelectionnee.name}
+          Signer avec {equipeSelectionnee.name}
         </button>
       </div>
     );
@@ -640,7 +649,8 @@ function App() {
             }}
             style={{
               ...styleBouton,
-              background: onglet === nom ? "#2879c7" : "#26394e"
+              background:
+                onglet === nom ? "#2879c7" : "#26394e"
             }}
           >
             {nom}
@@ -678,11 +688,20 @@ function App() {
 
           <div style={styleCarte}>
             <h2>{equipeSelectionnee.name}</h2>
-            <p>Conférence : {equipeSelectionnee.conference}</p>
-            <p>Division : {equipeSelectionnee.division}</p>
-            <p>Joueurs : {joueursEquipe.length}</p>
+
             <p>
-              Masse salariale : {afficherSalaire(totalMasseSalariale)}
+              Conférence : {equipeSelectionnee.conference}
+            </p>
+
+            <p>
+              Division : {equipeSelectionnee.division}
+            </p>
+
+            <p>Joueurs : {joueursEquipe.length}</p>
+
+            <p>
+              Masse salariale :{" "}
+              {afficherSalaire(totalMasseSalariale)}
             </p>
           </div>
 
@@ -779,7 +798,10 @@ function App() {
               ))}
             </select>
 
-            <button style={styleBouton} onClick={effectuerEchange}>
+            <button
+              style={styleBouton}
+              onClick={effectuerEchange}
+            >
               Confirmer l'échange
             </button>
           </div>
@@ -788,10 +810,10 @@ function App() {
 
       {onglet === "Agents libres" && (
         <section>
-          <h2>🏒 Marché des agents libres</h2>
+          <h2>Marché des agents libres</h2>
 
           <div style={styleCarte}>
-            <h3>Équipe qui fait une offre</h3>
+            <h3>Équipe qui souhaite signer</h3>
 
             <select
               style={{ ...styleSelect, width: "100%" }}
@@ -813,32 +835,28 @@ function App() {
 
             <p>
               Masse salariale actuelle :{" "}
-              <strong>{afficherSalaire(totalMasseSalariale)}</strong>
+              <strong>
+                {afficherSalaire(totalMasseSalariale)}
+              </strong>
             </p>
 
             <p>
-              Agents libres disponibles :{" "}
-              <strong>{agentsLibres.length}</strong>
+              Agents libres disponibles : {agentsLibres.length}
             </p>
           </div>
 
-          <p style={{ color: "#a9c5df" }}>
-            Les offres salariales sont modifiables. Les signatures
-            ajoutent le joueur à ton effectif.
-          </p>
-
           {agentsLibres.length === 0 ? (
             <div style={styleCarte}>
-              Il n'y a plus d'agents libres dans cette liste.
+              Tous les agents libres ont été signés !
             </div>
           ) : (
             agentsLibres.map(afficherAgentLibre)
           )}
 
-          <p style={{ color: "#91a8bd", fontSize: "12px" }}>
-            Liste de départ : joueurs confirmés sans contrat au
-            moment de la vérification. Elle doit être actualisée
-            pour suivre les nouvelles signatures réelles.
+          <p style={{ color: "#a9c5df", fontSize: "12px" }}>
+            Les offres sont des montants de simulation en millions
+            de dollars américains. Les signatures ne sont pas encore
+            sauvegardées après un rechargement de la page.
           </p>
         </section>
       )}
@@ -854,13 +872,18 @@ function App() {
 
             <p>Victoires : {victoires}</p>
             <p>Défaites : {defaites}</p>
-            <p>Défaites en prolongation : {defaitesProlongation}</p>
+            <p>
+              Défaites en prolongation : {defaitesProlongation}
+            </p>
 
             <p>
               Points : {victoires * 2 + defaitesProlongation}
             </p>
 
-            <button style={styleBouton} onClick={simulerMatch}>
+            <button
+              style={styleBouton}
+              onClick={simulerMatch}
+            >
               Simuler un match
             </button>
           </div>
@@ -877,7 +900,10 @@ function App() {
             </p>
 
             <button
-              style={{ ...styleBouton, background: "#18834a" }}
+              style={{
+                ...styleBouton,
+                background: "#18834a"
+              }}
               onClick={prochaineSaison}
             >
               Terminer la saison et avancer
@@ -895,7 +921,9 @@ function App() {
 
             <p>Joueurs : {joueursEquipe.length}</p>
 
-            <h2>{afficherSalaire(totalMasseSalariale)}</h2>
+            <h2>
+              {afficherSalaire(totalMasseSalariale)}
+            </h2>
 
             <p>
               Total des salaires des joueurs affichés dans l'effectif.
