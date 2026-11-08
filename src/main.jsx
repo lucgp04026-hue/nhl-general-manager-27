@@ -17,14 +17,32 @@ import "./style.css";
 
 const CLE_SAUVEGARDE = "nhl-general-manager-27-partie";
 
+const STATS_VIDES = {
+  MJ: 0,
+  B: 0,
+  A: 0,
+  PTS: 0,
+  plusMoins: 0,
+  PUN: 0,
+  AN: 0,
+  DN: 0,
+  BAG: 0
+};
+
 function lireSauvegarde() {
   try {
     const contenu = localStorage.getItem(CLE_SAUVEGARDE);
     return contenu ? JSON.parse(contenu) : null;
   } catch (error) {
-    console.error(error);
+    console.error("Erreur de sauvegarde :", error);
     return null;
   }
+}
+
+function cleJoueur(joueur) {
+  return String(
+    joueur.idNhl || joueur.id || joueur.nom
+  );
 }
 
 function App() {
@@ -75,9 +93,8 @@ function App() {
     () => partieInitiale?.defaites ?? 0
   );
 
-  const [defaitesProlongation, setDefaitesProlongation] = useState(
-    () => partieInitiale?.defaitesProlongation ?? 0
-  );
+  const [defaitesProlongation, setDefaitesProlongation] =
+    useState(() => partieInitiale?.defaitesProlongation ?? 0);
 
   const [historiqueMatchs, setHistoriqueMatchs] = useState(
     () => partieInitiale?.historiqueMatchs || []
@@ -85,6 +102,10 @@ function App() {
 
   const [historiqueEchanges, setHistoriqueEchanges] = useState(
     () => partieInitiale?.historiqueEchanges || []
+  );
+
+  const [statistiques, setStatistiques] = useState(
+    () => partieInitiale?.statistiques || {}
   );
 
   const [equipeEchange1, setEquipeEchange1] = useState("MTL");
@@ -96,7 +117,7 @@ function App() {
   const [equipeEchangesFiltre, setEquipeEchangesFiltre] =
     useState("TOUS");
 
-  // Chargement des données NHL au démarrage.
+  // Chargement initial des joueurs.
   useEffect(() => {
     let actif = true;
 
@@ -123,7 +144,6 @@ function App() {
           setErreur(
             "Impossible de charger toutes les données NHL. Les joueurs de départ sont affichés."
           );
-
           setEffectif(preparerJoueurs(players));
         }
       } finally {
@@ -138,12 +158,12 @@ function App() {
     };
   }, []);
 
-  // Sauvegarde automatique.
+  // Sauvegarde automatique de la partie.
   useEffect(() => {
     if (chargement) return;
 
     const partie = {
-      version: 1,
+      version: 2,
       dateSauvegarde: new Date().toISOString(),
       effectif,
       equipeSelectionnee: equipeSelectionnee.id,
@@ -154,11 +174,15 @@ function App() {
       defaites,
       defaitesProlongation,
       historiqueMatchs,
-      historiqueEchanges
+      historiqueEchanges,
+      statistiques
     };
 
     try {
-      localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(partie));
+      localStorage.setItem(
+        CLE_SAUVEGARDE,
+        JSON.stringify(partie)
+      );
     } catch (error) {
       console.error("Erreur de sauvegarde automatique :", error);
     }
@@ -173,7 +197,8 @@ function App() {
     defaites,
     defaitesProlongation,
     historiqueMatchs,
-    historiqueEchanges
+    historiqueEchanges,
+    statistiques
   ]);
 
   const joueursEquipe = effectif.filter(
@@ -199,18 +224,7 @@ function App() {
     (joueur) => joueur.equipe === nomEquipeEchange2
   );
 
-  function afficherSalaire(salaire) {
-    const montant = Number(salaire) || 0;
-
-    if (montant <= 0) return "Non disponible";
-
-    return (montant * 1000000).toLocaleString("fr-CA", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0
-    });
-  }
-
+  // Styles.
   const styleBouton = {
     padding: "11px 18px",
     border: "none",
@@ -238,14 +252,16 @@ function App() {
     maxWidth: "100%"
   };
 
-  function changerEquipeEchange1(id) {
-    setEquipeEchange1(id);
-    setJoueurEchange1("");
-  }
+  function afficherSalaire(salaire) {
+    const montant = Number(salaire) || 0;
 
-  function changerEquipeEchange2(id) {
-    setEquipeEchange2(id);
-    setJoueurEchange2("");
+    if (montant <= 0) return "Non disponible";
+
+    return (montant * 1000000).toLocaleString("fr-CA", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    });
   }
 
   function sauvegarderPartie() {
@@ -255,7 +271,7 @@ function App() {
     }
 
     const partie = {
-      version: 1,
+      version: 2,
       dateSauvegarde: new Date().toISOString(),
       effectif,
       equipeSelectionnee: equipeSelectionnee.id,
@@ -266,11 +282,15 @@ function App() {
       defaites,
       defaitesProlongation,
       historiqueMatchs,
-      historiqueEchanges
+      historiqueEchanges,
+      statistiques
     };
 
     try {
-      localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(partie));
+      localStorage.setItem(
+        CLE_SAUVEGARDE,
+        JSON.stringify(partie)
+      );
       setMessage("💾 Partie sauvegardée avec succès !");
     } catch (error) {
       console.error(error);
@@ -286,11 +306,13 @@ function App() {
       return;
     }
 
-    const confirmer = window.confirm(
-      "Charger la partie sauvegardée ? La partie actuelle sera remplacée."
-    );
-
-    if (!confirmer) return;
+    if (
+      !window.confirm(
+        "Charger la partie sauvegardée ? La partie actuelle sera remplacée."
+      )
+    ) {
+      return;
+    }
 
     setEffectif(partie.effectif);
 
@@ -307,6 +329,7 @@ function App() {
     setDefaitesProlongation(partie.defaitesProlongation ?? 0);
     setHistoriqueMatchs(partie.historiqueMatchs || []);
     setHistoriqueEchanges(partie.historiqueEchanges || []);
+    setStatistiques(partie.statistiques || {});
 
     setMessage("📂 Partie chargée avec succès !");
     setOnglet("Accueil");
@@ -361,45 +384,221 @@ function App() {
     (joueur) => categoriePosition(joueur.pos) === "gardiens"
   );
 
-  // Création des buteurs d'un match.
-  function genererButeurs(listeJoueurs, nombreButs, nomEquipe) {
-    const candidats = listeJoueurs.filter(
+  // Choisir des joueurs aléatoires sans répétition.
+  function choisirJoueurs(liste, nombre) {
+    const melange = [...liste];
+
+    for (let i = melange.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [melange[i], melange[j]] = [melange[j], melange[i]];
+    }
+
+    return melange.slice(0, Math.min(nombre, melange.length));
+  }
+
+  // Génération des statistiques d'un match.
+  function genererStatistiquesMatch(
+    joueursLocaux,
+    joueursAdverses,
+    butsLocaux,
+    butsAdverses,
+    nomLocal,
+    nomAdverse
+  ) {
+    const nouvellesStats = { ...statistiques };
+
+    function obtenirStats(joueur) {
+      const cle = cleJoueur(joueur);
+
+      return {
+        ...(nouvellesStats[cle] || STATS_VIDES)
+      };
+    }
+
+    function modifierStats(joueur, changements) {
+      const cle = cleJoueur(joueur);
+      const actuelles = obtenirStats(joueur);
+
+      nouvellesStats[cle] = {
+        ...actuelles,
+        ...Object.fromEntries(
+          Object.entries(changements).map(([nom, valeur]) => [
+            nom,
+            (Number(actuelles[nom]) || 0) + valeur
+          ])
+        )
+      };
+    }
+
+    const skatersLocaux = joueursLocaux.filter(
       (joueur) => categoriePosition(joueur.pos) !== "gardiens"
     );
 
-    if (candidats.length === 0) {
-      return nombreButs > 0
-        ? [{
-            nom: "Buteur inconnu",
-            equipe: nomEquipe,
-            buts: nombreButs
-          }]
-        : [];
-    }
+    const skatersAdverses = joueursAdverses.filter(
+      (joueur) => categoriePosition(joueur.pos) !== "gardiens"
+    );
 
-    const buteurs = {};
+    // Chaque joueur de l'effectif est compté comme ayant joué.
+    [...joueursLocaux, ...joueursAdverses].forEach((joueur) => {
+      modifierStats(joueur, { MJ: 1 });
+    });
 
-    for (let i = 0; i < nombreButs; i++) {
-      const joueur =
-        candidats[Math.floor(Math.random() * candidats.length)];
+    const evenementsButs = [];
 
-      const cle = joueur.idNhl || joueur.id || joueur.nom;
+    function creerButs(
+      equipeAttaquante,
+      equipeDefense,
+      nombreButs,
+      nomAttaque,
+      nomDefense
+    ) {
+      const buteurs = [];
 
-      if (!buteurs[cle]) {
-        buteurs[cle] = {
-          nom: joueur.nom,
-          equipe: nomEquipe,
-          buts: 0
-        };
+      for (let i = 0; i < nombreButs; i++) {
+        const listeAttaque =
+          equipeAttaquante.length > 0
+            ? equipeAttaquante
+            : equipeDefense;
+
+        if (listeAttaque.length === 0) continue;
+
+        const buteur =
+          listeAttaque[Math.floor(Math.random() * listeAttaque.length)];
+
+        const autresJoueurs = listeAttaque.filter(
+          (joueur) => joueur !== buteur
+        );
+
+        const passeurs = choisirJoueurs(autresJoueurs, 2);
+
+        const typeAleatoire = Math.random();
+
+        let type = "REG";
+        if (typeAleatoire < 0.2) type = "AN";
+        else if (typeAleatoire < 0.27) type = "DN";
+
+        modifierStats(buteur, {
+          B: 1,
+          ...(type === "AN" ? { AN: 1 } : {}),
+          ...(type === "DN" ? { DN: 1 } : {}),
+          ...(type !== "AN" ? { plusMoins: 1 } : {})
+        });
+
+        passeurs.forEach((passeur) => {
+          modifierStats(passeur, { A: 1 });
+        });
+
+        // Le différentiel ne compte pas les buts en avantage numérique.
+        if (type !== "AN") {
+          choisirJoueurs(equipeAttaquante, 3).forEach((joueur) => {
+            if (joueur !== buteur) {
+              modifierStats(joueur, { plusMoins: 1 });
+            }
+          });
+
+          choisirJoueurs(equipeDefense, 3).forEach((joueur) => {
+            modifierStats(joueur, { plusMoins: -1 });
+          });
+        }
+
+        buteurs.push({
+          nom: buteur.nom,
+          equipe: nomAttaque,
+          buts: 1,
+          type,
+          passeurs: passeurs.map((joueur) => joueur.nom)
+        });
       }
 
-      buteurs[cle].buts++;
+      return buteurs;
     }
 
-    return Object.values(buteurs);
+    const buteursLocaux = creerButs(
+      skatersLocaux,
+      skatersAdverses,
+      butsLocaux,
+      nomLocal,
+      nomAdverse
+    );
+
+    const buteursAdverses = creerButs(
+      skatersAdverses,
+      skatersLocaux,
+      butsAdverses,
+      nomAdverse,
+      nomLocal
+    );
+
+    evenementsButs.push(...buteursLocaux, ...buteursAdverses);
+
+    // Pénalités aléatoires.
+    const penalites = Math.floor(Math.random() * 5);
+
+    for (let i = 0; i < penalites; i++) {
+      const equipe =
+        Math.random() < 0.5 ? skatersLocaux : skatersAdverses;
+
+      if (equipe.length === 0) continue;
+
+      const joueur =
+        equipe[Math.floor(Math.random() * equipe.length)];
+
+      modifierStats(joueur, {
+        PUN: Math.random() < 0.8 ? 2 : 4
+      });
+    }
+
+    // Possibilité d'une bagarre.
+    let bagarre = null;
+
+    if (
+      skatersLocaux.length > 0 &&
+      skatersAdverses.length > 0 &&
+      Math.random() < 0.18
+    ) {
+      const combattant1 =
+        skatersLocaux[
+          Math.floor(Math.random() * skatersLocaux.length)
+        ];
+
+      const combattant2 =
+        skatersAdverses[
+          Math.floor(Math.random() * skatersAdverses.length)
+        ];
+
+      modifierStats(combattant1, {
+        BAG: 1,
+        PUN: 5
+      });
+
+      modifierStats(combattant2, {
+        BAG: 1,
+        PUN: 5
+      });
+
+      bagarre = {
+        equipe1: nomLocal,
+        joueur1: combattant1.nom,
+        equipe2: nomAdverse,
+        joueur2: combattant2.nom
+      };
+    }
+
+    // Calcul des points individuels.
+    Object.keys(nouvellesStats).forEach((cle) => {
+      const stats = nouvellesStats[cle];
+
+      stats.PTS = (stats.B || 0) + (stats.A || 0);
+    });
+
+    return {
+      statistiques: nouvellesStats,
+      buteurs: evenementsButs,
+      bagarre
+    };
   }
 
-  // Simulation d'un match avec les buteurs.
+  // Simulation d'un match.
   function simulerMatch() {
     const adversaires = teams.filter(
       (equipe) => equipe.id !== equipeSelectionnee.id
@@ -428,17 +627,16 @@ function App() {
     const victoire = butsEquipe > butsAdversaire;
     const prolongation = !victoire && Math.random() < 0.3;
 
-    const buteursEquipe = genererButeurs(
+    const resultatStats = genererStatistiquesMatch(
       joueursEquipe,
-      butsEquipe,
-      equipeSelectionnee.name
-    );
-
-    const buteursAdverses = genererButeurs(
       joueursAdverses,
+      butsEquipe,
       butsAdversaire,
+      equipeSelectionnee.name,
       adversaire.name
     );
+
+    setStatistiques(resultatStats.statistiques);
 
     const nouveauMatch = {
       id: Date.now() + Math.random(),
@@ -449,7 +647,8 @@ function App() {
       butsAdversaire,
       victoire,
       prolongation,
-      buteurs: [...buteursEquipe, ...buteursAdverses]
+      buteurs: resultatStats.buteurs,
+      bagarre: resultatStats.bagarre
     };
 
     setHistoriqueMatchs((anciens) => [
@@ -498,7 +697,17 @@ function App() {
     setMessage("La nouvelle saison commence ! 🏒");
   }
 
-  // Échange entre deux équipes.
+  // Échanges entre deux équipes.
+  function changerEquipeEchange1(id) {
+    setEquipeEchange1(id);
+    setJoueurEchange1("");
+  }
+
+  function changerEquipeEchange2(id) {
+    setEquipeEchange2(id);
+    setJoueurEchange2("");
+  }
+
   function effectuerEchange() {
     if (!joueurEchange1 || !joueurEchange2) {
       setMessage("Sélectionne deux joueurs.");
@@ -521,15 +730,17 @@ function App() {
       return;
     }
 
-    const confirmer = window.confirm(
-      "Confirmer l'échange de " +
-        joueur1.nom +
-        " contre " +
-        joueur2.nom +
-        " ?"
-    );
-
-    if (!confirmer) return;
+    if (
+      !window.confirm(
+        "Confirmer l'échange de " +
+          joueur1.nom +
+          " contre " +
+          joueur2.nom +
+          " ?"
+      )
+    ) {
+      return;
+    }
 
     const nouvelEffectif = [...effectif];
 
@@ -569,6 +780,7 @@ function App() {
     );
   }
 
+  // Agents libres.
   function modifierOffre(id, montant) {
     setOffres((anciennes) => ({
       ...anciennes,
@@ -584,17 +796,19 @@ function App() {
       return;
     }
 
-    const confirmer = window.confirm(
-      "Signer " +
-        agent.nom +
-        " avec " +
-        equipeSelectionnee.name +
-        " pour " +
-        afficherSalaire(montant) +
-        " par saison ?"
-    );
-
-    if (!confirmer) return;
+    if (
+      !window.confirm(
+        "Signer " +
+          agent.nom +
+          " avec " +
+          equipeSelectionnee.name +
+          " pour " +
+          afficherSalaire(montant) +
+          " par saison ?"
+      )
+    ) {
+      return;
+    }
 
     const nouveauJoueur = {
       idNhl: agent.idNhl || agent.id,
@@ -634,6 +848,7 @@ function App() {
     );
   }
 
+  // Photos des joueurs.
   function afficherPhoto(joueur) {
     if (joueur.photo) {
       return (
@@ -883,6 +1098,168 @@ function App() {
     );
   }
 
+  // Statistiques d'un joueur.
+  function obtenirStatsJoueur(joueur) {
+    return {
+      ...STATS_VIDES,
+      ...(statistiques[cleJoueur(joueur)] || {})
+    };
+  }
+
+  // Tableau de statistiques de l'équipe sélectionnée.
+  function afficherStatistiques() {
+    const joueursAvecStats = joueursEquipe
+      .map((joueur) => ({
+        joueur,
+        stats: obtenirStatsJoueur(joueur)
+      }))
+      .sort((a, b) => {
+        if (b.stats.PTS !== a.stats.PTS) {
+          return b.stats.PTS - a.stats.PTS;
+        }
+
+        return b.stats.B - a.stats.B;
+      });
+
+    const total = joueursAvecStats.reduce(
+      (acc, element) => {
+        Object.keys(STATS_VIDES).forEach((cle) => {
+          acc[cle] += Number(element.stats[cle]) || 0;
+        });
+
+        return acc;
+      },
+      { ...STATS_VIDES }
+    );
+
+    return (
+      <section>
+        <h2>📊 Statistiques des équipes</h2>
+
+        <div style={styleCarte}>
+          <h3>Choisir une équipe</h3>
+
+          <select
+            style={{ ...styleSelect, width: "100%" }}
+            value={equipeSelectionnee.id}
+            onChange={(e) => {
+              const equipe = teams.find(
+                (item) => item.id === e.target.value
+              );
+
+              if (equipe) setEquipeSelectionnee(equipe);
+            }}
+          >
+            {teams.map((equipe) => (
+              <option key={equipe.id} value={equipe.id}>
+                {equipe.name}
+              </option>
+            ))}
+          </select>
+
+          <h3>{equipeSelectionnee.name}</h3>
+
+          <p>Joueurs dans l'effectif : {joueursEquipe.length}</p>
+          <p>Matchs-joueurs comptabilisés : {total.MJ}</p>
+          <p>Buts : {total.B}</p>
+          <p>Assistances : {total.A}</p>
+          <p>Points : {total.PTS}</p>
+          <p>Minutes de pénalité : {total.PUN}</p>
+          <p>Buts en avantage numérique : {total.AN}</p>
+          <p>Buts en désavantage numérique : {total.DN}</p>
+          <p>Bagarres : {total.BAG}</p>
+        </div>
+
+        <h3>Classement des joueurs</h3>
+
+        <div style={{ ...styleCarte, overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: "760px",
+              textAlign: "center"
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#26394e" }}>
+                {[
+                  "Joueur",
+                  "MJ",
+                  "B",
+                  "A",
+                  "PTS",
+                  "+/-",
+                  "PUN",
+                  "AN",
+                  "DN",
+                  "BAG"
+                ].map((titre) => (
+                  <th
+                    key={titre}
+                    style={{ padding: "10px 7px" }}
+                  >
+                    {titre}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {joueursAvecStats.map(({ joueur, stats }) => (
+                <tr
+                  key={cleJoueur(joueur)}
+                  style={{ borderBottom: "1px solid #34465c" }}
+                >
+                  <td
+                    style={{
+                      padding: "10px",
+                      textAlign: "left",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {joueur.nom}
+                  </td>
+
+                  <td>{stats.MJ}</td>
+                  <td>{stats.B}</td>
+                  <td>{stats.A}</td>
+                  <td>
+                    <strong>{stats.PTS}</strong>
+                  </td>
+                  <td
+                    style={{
+                      color:
+                        stats.plusMoins > 0
+                          ? "#5de09a"
+                          : stats.plusMoins < 0
+                            ? "#ff7777"
+                            : "white"
+                    }}
+                  >
+                    {stats.plusMoins > 0
+                      ? `+${stats.plusMoins}`
+                      : stats.plusMoins}
+                  </td>
+                  <td>{stats.PUN}</td>
+                  <td>{stats.AN}</td>
+                  <td>{stats.DN}</td>
+                  <td>{stats.BAG}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p style={{ color: "#a9c5df", fontSize: "12px" }}>
+          Les joueurs sont classés par points, puis par buts.
+          Les statistiques commencent à zéro pour les joueurs
+          qui n'ont pas encore participé à un match simulé.
+        </p>
+      </section>
+    );
+  }
+
   function afficherMatch(match) {
     return (
       <div key={match.id} style={styleCarte}>
@@ -902,17 +1279,29 @@ function App() {
 
         <hr style={{ borderColor: "#34465c" }} />
 
-        <h4>🏒 Buteurs</h4>
+        <h4>🏒 Buteurs et passeurs</h4>
 
         {match.buteurs.length === 0 ? (
           <p>Aucun buteur enregistré.</p>
         ) : (
           match.buteurs.map((buteur, index) => (
             <p key={index} style={{ margin: "7px 0" }}>
-              <strong>{buteur.nom}</strong> — {buteur.equipe} :{" "}
-              {buteur.buts} but(s)
+              <strong>{buteur.nom}</strong> — {buteur.equipe}
+              {buteur.type === "AN" ? " (AN)" : ""}
+              {buteur.type === "DN" ? " (DN)" : ""}
+              {" — "}
+              {buteur.passeurs?.length > 0
+                ? "Passe : " + buteur.passeurs.join(", ")
+                : "Sans assistance"}
             </p>
           ))
+        )}
+
+        {match.bagarre && (
+          <p style={{ color: "#ffbb66" }}>
+            🥊 Bagarre : {match.bagarre.joueur1} contre{" "}
+            {match.bagarre.joueur2}
+          </p>
         )}
       </div>
     );
@@ -969,6 +1358,7 @@ function App() {
           "Échanges",
           "Agents libres",
           "Saison",
+          "Statistiques",
           "Finances"
         ].map((nom) => (
           <button
@@ -1082,8 +1472,8 @@ function App() {
           <h2>Marché des échanges</h2>
 
           <p>
-            Choisis une équipe, puis sélectionne le joueur que tu veux
-            échanger. Fais ensuite la même chose pour l'autre équipe.
+            Choisis une équipe, puis sélectionne un joueur.
+            Fais la même chose pour l'autre équipe.
           </p>
 
           <div style={styleCarte}>
@@ -1173,7 +1563,9 @@ function App() {
             Confirmer l'échange
           </button>
 
-          <h3 style={{ marginTop: "30px" }}>Historique des échanges</h3>
+          <h3 style={{ marginTop: "30px" }}>
+            Historique des échanges
+          </h3>
 
           <select
             style={{ ...styleSelect, width: "100%" }}
@@ -1325,6 +1717,8 @@ function App() {
           )}
         </section>
       )}
+
+      {onglet === "Statistiques" && afficherStatistiques()}
 
       {onglet === "Finances" && (
         <section>
