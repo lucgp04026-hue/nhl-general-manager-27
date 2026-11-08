@@ -97,7 +97,6 @@ function App() {
     () => sauvegardeInitiale?.statistiques || {}
   );
 
-  // Fatigue et historique des départs des gardiens.
   const [fatigueGardiens, setFatigueGardiens] = useState(
     () => sauvegardeInitiale?.fatigueGardiens || {}
   );
@@ -143,7 +142,6 @@ function App() {
     maxWidth: "100%"
   };
 
-  // Chargement des joueurs.
   useEffect(() => {
     let actif = true;
 
@@ -179,7 +177,6 @@ function App() {
     };
   }, []);
 
-  // Sauvegarde automatique.
   useEffect(() => {
     if (chargement) return;
 
@@ -338,8 +335,31 @@ function App() {
     setMessage("📂 Partie chargée !");
   }
 
-  // Choix du gardien partant.
-  function choisirGardienPartant(nomEquipe, listeGardiens, fatigue, derniersDeparts) {
+  // NOUVEAU : supprimer la partie et recommencer à zéro.
+  function recommencerPartie() {
+    const confirmer = window.confirm(
+      "ATTENTION ! Veux-tu vraiment supprimer ta partie ? " +
+      "Tous tes joueurs signés, échanges, résultats et statistiques " +
+      "seront effacés. Cette action est irréversible."
+    );
+
+    if (!confirmer) return;
+
+    try {
+      localStorage.removeItem(CLE_SAUVEGARDE);
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      setMessage("Impossible de supprimer la sauvegarde.");
+    }
+  }
+
+  function choisirGardienPartant(
+    nomEquipe,
+    listeGardiens,
+    fatigue,
+    derniersDeparts
+  ) {
     if (!listeGardiens.length) return null;
 
     const gardiensTries = [...listeGardiens].sort((a, b) => {
@@ -351,12 +371,9 @@ function App() {
 
       const dernier = derniersDeparts[nomEquipe];
 
-      // OVR élevé = meilleur gardien.
       const ovrA = Number(a.ovr) || 65;
       const ovrB = Number(b.ovr) || 65;
 
-      // La fatigue diminue la priorité.
-      // Un gardien qui vient de jouer reçoit une pénalité supplémentaire.
       const scoreA =
         ovrA - fatigueA * 0.65 - (cleA === dernier ? 18 : 0);
 
@@ -380,7 +397,6 @@ function App() {
     return melange.slice(0, Math.min(nombre, melange.length));
   }
 
-  // Statistiques des joueurs et des gardiens.
   function genererStatistiquesMatch(
     locaux,
     visiteurs,
@@ -424,7 +440,6 @@ function App() {
       (j) => positionType(j.pos) !== "G"
     );
 
-    // Matchs joués.
     [...skatersLocaux, ...skatersVisiteurs].forEach((j) => {
       modifier(j, { MJ: 1 });
     });
@@ -457,7 +472,6 @@ function App() {
 
         passeurs.forEach((p) => modifier(p, { A: 1 }));
 
-        // Le différentiel ne compte pas les buts en avantage numérique.
         if (type !== "AN") {
           attaque.forEach((j) => {
             if (j !== buteur) modifier(j, { plusMoins: 1 });
@@ -493,7 +507,6 @@ function App() {
       nomVisiteur
     );
 
-    // Pénalités.
     for (let i = 0; i < Math.floor(Math.random() * 5); i++) {
       const equipe =
         Math.random() < 0.5 ? skatersLocaux : skatersVisiteurs;
@@ -508,7 +521,6 @@ function App() {
       });
     }
 
-    // Bagarre.
     let bagarre = null;
 
     if (
@@ -535,7 +547,6 @@ function App() {
       };
     }
 
-    // Statistiques du gardien partant.
     function enregistrerGardien(gardien, butsContre, resultat) {
       if (!gardien) return;
 
@@ -588,7 +599,6 @@ function App() {
     };
   }
 
-  // Simulation d'un match avec rotation des gardiens.
   function simulerMatch() {
     const adversaires = teams.filter(
       (e) => e.id !== equipeSelectionnee.id
@@ -654,7 +664,6 @@ function App() {
 
     setStatistiques(resultat.statistiques);
 
-    // Mise à jour de la fatigue de tous les gardiens.
     const nouvelleFatigue = { ...fatigueGardiens };
 
     [...gardiensLocaux, ...gardiensAdverses].forEach((gardien) => {
@@ -739,14 +748,11 @@ function App() {
     setVictoires(0);
     setDefaites(0);
     setDefaitesProlongation(0);
-
-    // Les gardiens récupèrent pendant l'entre-saison.
     setFatigueGardiens({});
 
     setMessage("Nouvelle saison commencée !");
   }
 
-  // Échanges.
   const nomEchange1 = teams.find(
     (e) => e.id === equipeEchange1
   )?.name;
@@ -808,7 +814,6 @@ function App() {
     setMessage("Échange effectué !");
   }
 
-  // Agents libres.
   function signerAgent(agent) {
     const montant = Number(offres[agent.id]);
 
@@ -838,7 +843,6 @@ function App() {
     setMessage(`${agent.nom} a signé !`);
   }
 
-  // Affichage des joueurs.
   function afficherJoueur(joueur, index) {
     return (
       <div key={cleJoueur(joueur) + index} style={styleCarte}>
@@ -883,7 +887,6 @@ function App() {
     );
   }
 
-  // Statistiques.
   function statsJoueur(joueur) {
     return {
       ...STATS_VIDES,
@@ -1141,6 +1144,14 @@ function App() {
           onClick={chargerPartie}
         >
           📂 Charger
+        </button>
+
+        {/* NOUVEAU BOUTON DE RÉINITIALISATION */}
+        <button
+          style={{ ...styleBouton, background: "#b83232" }}
+          onClick={recommencerPartie}
+        >
+          🗑️ Supprimer la partie
         </button>
       </header>
 
