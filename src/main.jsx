@@ -39,6 +39,87 @@ function cleJoueur(joueur) {
   return String(joueur.idNhl || joueur.id || joueur.nom);
 }
 
+function melanger(liste) {
+  const copie = [...liste];
+
+  for (let i = copie.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copie[i], copie[j]] = [copie[j], copie[i]];
+  }
+
+  return copie;
+}
+
+// Calendrier de 84 journées : 16 matchs par journée.
+function creerCalendrier(equipes) {
+  if (equipes.length !== 32) {
+    throw new Error("Le calendrier nécessite 32 équipes.");
+  }
+
+  const rotation = equipes.map((e) => e.id);
+  const rondes = [];
+
+  for (let jour = 0; jour < 31; jour++) {
+    const matchs = [];
+
+    for (let i = 0; i < 16; i++) {
+      matchs.push([
+        rotation[i],
+        rotation[31 - i]
+      ]);
+    }
+
+    rondes.push(matchs);
+
+    const dernier = rotation.pop();
+    rotation.splice(1, 0, dernier);
+  }
+
+  return [
+    ...rondes,
+    ...rondes,
+    ...rondes.slice(0, 22)
+  ];
+}
+
+function creerClassement() {
+  return teams.map((e) => ({
+    id: e.id,
+    equipe: e.name,
+    MJ: 0,
+    V: 0,
+    D: 0,
+    DP: 0,
+    PTS: 0,
+    BP: 0,
+    BC: 0
+  }));
+}
+
+function trierClassement(classement) {
+  return [...classement].sort(
+    (a, b) =>
+      b.PTS - a.PTS ||
+      b.V - a.V ||
+      (b.BP - b.BC) - (a.BP - a.BC) ||
+      b.BP - a.BP
+  );
+}
+
+function creerSerie(equipe1, equipe2, numero) {
+  return {
+    id: `serie-${numero}-${equipe1.id}-${equipe2.id}`,
+    equipe1: equipe1.id,
+    equipe2: equipe2.id,
+    nom1: equipe1.equipe,
+    nom2: equipe2.equipe,
+    victoires1: 0,
+    victoires2: 0,
+    terminee: false,
+    gagnant: null
+  };
+}
+
 function App() {
   const [sauvegardeInitiale] = useState(() => lireSauvegarde());
 
@@ -66,7 +147,7 @@ function App() {
     () =>
       sauvegardeInitiale?.offres ||
       Object.fromEntries(
-        AGENTS_LIBRES_DEPART.map((a) => [a.id, String(a.offre)])
+        AGENTS_LIBRES_DEPART.map((a) => [a.id, String(a.offre || 0.8)])
       )
   );
 
@@ -74,16 +155,29 @@ function App() {
     () => sauvegardeInitiale?.saison ?? 2026
   );
 
-  const [victoires, setVictoires] = useState(
-    () => sauvegardeInitiale?.victoires ?? 0
+  const [phase, setPhase] = useState(
+    () => sauvegardeInitiale?.phase || "REGULIERE"
   );
 
-  const [defaites, setDefaites] = useState(
-    () => sauvegardeInitiale?.defaites ?? 0
+  const [journee, setJournee] = useState(
+    () => sauvegardeInitiale?.journee || 0
   );
 
-  const [defaitesProlongation, setDefaitesProlongation] =
-    useState(() => sauvegardeInitiale?.defaitesProlongation ?? 0);
+  const [classement, setClassement] = useState(
+    () => sauvegardeInitiale?.classement || creerClassement()
+  );
+
+  const [series, setSeries] = useState(
+    () => sauvegardeInitiale?.series || []
+  );
+
+  const [rondeSeries, setRondeSeries] = useState(
+    () => sauvegardeInitiale?.rondeSeries || 1
+  );
+
+  const [champion, setChampion] = useState(
+    () => sauvegardeInitiale?.champion || null
+  );
 
   const [historiqueMatchs, setHistoriqueMatchs] = useState(
     () => sauvegardeInitiale?.historiqueMatchs || []
@@ -105,6 +199,10 @@ function App() {
     () => sauvegardeInitiale?.dernierGardienDepart || {}
   );
 
+  const [choixRepêchage, setChoixRepêchage] = useState(
+    () => sauvegardeInitiale?.choixRepêchage || []
+  );
+
   const [chargement, setChargement] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -112,8 +210,12 @@ function App() {
   const [equipeEchange2, setEquipeEchange2] = useState("TOR");
   const [joueurEchange1, setJoueurEchange1] = useState("");
   const [joueurEchange2, setJoueurEchange2] = useState("");
-
   const [filtreStats, setFiltreStats] = useState("TOUS");
+
+  const calendrier = React.useMemo(
+    () => creerCalendrier(teams),
+    []
+  );
 
   const styleCarte = {
     background: "#172638",
@@ -177,6 +279,7 @@ function App() {
     };
   }, []);
 
+  // Sauvegarde automatique.
   useEffect(() => {
     if (chargement) return;
 
@@ -186,14 +289,18 @@ function App() {
       agentsLibres,
       offres,
       saison,
-      victoires,
-      defaites,
-      defaitesProlongation,
+      phase,
+      journee,
+      classement,
+      series,
+      rondeSeries,
+      champion,
       historiqueMatchs,
       historiqueEchanges,
       statistiques,
       fatigueGardiens,
-      dernierGardienDepart
+      dernierGardienDepart,
+      choixRepêchage
     };
 
     try {
@@ -208,14 +315,18 @@ function App() {
     agentsLibres,
     offres,
     saison,
-    victoires,
-    defaites,
-    defaitesProlongation,
+    phase,
+    journee,
+    classement,
+    series,
+    rondeSeries,
+    champion,
     historiqueMatchs,
     historiqueEchanges,
     statistiques,
     fatigueGardiens,
-    dernierGardienDepart
+    dernierGardienDepart,
+    choixRepêchage
   ]);
 
   const joueursEquipe = effectif.filter(
@@ -236,30 +347,6 @@ function App() {
     return "A";
   }
 
-  function trierAttaquants(liste) {
-    const ordre = {
-      C: 1, AG: 2, AD: 3, LW: 2, RW: 3
-    };
-
-    return [...liste].sort(
-      (a, b) =>
-        (ordre[String(a.pos).toUpperCase()] || 4) -
-        (ordre[String(b.pos).toUpperCase()] || 4)
-    );
-  }
-
-  const attaquants = trierAttaquants(
-    joueursEquipe.filter((j) => positionType(j.pos) === "A")
-  );
-
-  const defenseurs = joueursEquipe.filter(
-    (j) => positionType(j.pos) === "D"
-  );
-
-  const gardiens = joueursEquipe.filter(
-    (j) => positionType(j.pos) === "G"
-  );
-
   function salaireTexte(salaire) {
     const montant = Number(salaire) || 0;
 
@@ -278,23 +365,27 @@ function App() {
       return;
     }
 
-    const partie = {
-      effectif,
-      equipeSelectionnee: equipeSelectionnee.id,
-      agentsLibres,
-      offres,
-      saison,
-      victoires,
-      defaites,
-      defaitesProlongation,
-      historiqueMatchs,
-      historiqueEchanges,
-      statistiques,
-      fatigueGardiens,
-      dernierGardienDepart
-    };
-
     try {
+      const partie = {
+        effectif,
+        equipeSelectionnee: equipeSelectionnee.id,
+        agentsLibres,
+        offres,
+        saison,
+        phase,
+        journee,
+        classement,
+        series,
+        rondeSeries,
+        champion,
+        historiqueMatchs,
+        historiqueEchanges,
+        statistiques,
+        fatigueGardiens,
+        dernierGardienDepart,
+        choixRepêchage
+      };
+
       localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(partie));
       setMessage("💾 Partie sauvegardée !");
     } catch {
@@ -322,115 +413,145 @@ function App() {
     setAgentsLibres(partie.agentsLibres || []);
     setOffres(partie.offres || {});
     setSaison(partie.saison ?? 2026);
-    setVictoires(partie.victoires ?? 0);
-    setDefaites(partie.defaites ?? 0);
-    setDefaitesProlongation(partie.defaitesProlongation ?? 0);
+    setPhase(partie.phase || "REGULIERE");
+    setJournee(partie.journee || 0);
+    setClassement(partie.classement || creerClassement());
+    setSeries(partie.series || []);
+    setRondeSeries(partie.rondeSeries || 1);
+    setChampion(partie.champion || null);
     setHistoriqueMatchs(partie.historiqueMatchs || []);
     setHistoriqueEchanges(partie.historiqueEchanges || []);
     setStatistiques(partie.statistiques || {});
     setFatigueGardiens(partie.fatigueGardiens || {});
     setDernierGardienDepart(partie.dernierGardienDepart || {});
+    setChoixRepêchage(partie.choixRepêchage || []);
 
     setOnglet("Accueil");
     setMessage("📂 Partie chargée !");
   }
 
-  // NOUVEAU : supprimer la partie et recommencer à zéro.
+  // Suppression complète de la sauvegarde.
   function recommencerPartie() {
     const confirmer = window.confirm(
-      "ATTENTION ! Veux-tu vraiment supprimer ta partie ? " +
-      "Tous tes joueurs signés, échanges, résultats et statistiques " +
-      "seront effacés. Cette action est irréversible."
+      "ATTENTION ! Supprimer définitivement cette partie et recommencer à zéro ? " +
+      "Les joueurs signés, les échanges, les statistiques et les résultats seront effacés."
     );
 
     if (!confirmer) return;
 
-    try {
-      localStorage.removeItem(CLE_SAUVEGARDE);
-      window.location.reload();
-    } catch (error) {
-      console.error(error);
-      setMessage("Impossible de supprimer la sauvegarde.");
-    }
+    localStorage.removeItem(CLE_SAUVEGARDE);
+    window.location.reload();
   }
 
-  function choisirGardienPartant(
-    nomEquipe,
-    listeGardiens,
-    fatigue,
-    derniersDeparts
-  ) {
+  function choisirAleatoirement(liste, nombre) {
+    const melange = melanger(liste);
+    return melange.slice(0, Math.min(nombre, melange.length));
+  }
+
+  // Contexte partagé : évite d'écraser les statistiques entre plusieurs matchs.
+  function creerContexteSimulation() {
+    return {
+      statistiques: { ...statistiques },
+      fatigue: { ...fatigueGardiens },
+      derniers: { ...dernierGardienDepart },
+      matchs: []
+    };
+  }
+
+  function choisirGardienPartant(nomEquipe, listeGardiens, contexte) {
     if (!listeGardiens.length) return null;
 
-    const gardiensTries = [...listeGardiens].sort((a, b) => {
+    const tries = [...listeGardiens].sort((a, b) => {
       const cleA = cleJoueur(a);
       const cleB = cleJoueur(b);
 
-      const fatigueA = Number(fatigue[cleA]) || 0;
-      const fatigueB = Number(fatigue[cleB]) || 0;
-
-      const dernier = derniersDeparts[nomEquipe];
-
-      const ovrA = Number(a.ovr) || 65;
-      const ovrB = Number(b.ovr) || 65;
+      const fatigueA = Number(contexte.fatigue[cleA]) || 0;
+      const fatigueB = Number(contexte.fatigue[cleB]) || 0;
+      const dernier = contexte.derniers[nomEquipe];
 
       const scoreA =
-        ovrA - fatigueA * 0.65 - (cleA === dernier ? 18 : 0);
+        (Number(a.ovr) || 65) -
+        fatigueA * 0.65 -
+        (cleA === dernier ? 18 : 0);
 
       const scoreB =
-        ovrB - fatigueB * 0.65 - (cleB === dernier ? 18 : 0);
+        (Number(b.ovr) || 65) -
+        fatigueB * 0.65 -
+        (cleB === dernier ? 18 : 0);
 
       return scoreB - scoreA;
     });
 
-    return gardiensTries[0];
+    return tries[0];
   }
 
-  function choisirAleatoirement(liste, nombre) {
-    const melange = [...liste];
+  function ajouterStatistique(contexte, joueur, changements) {
+    const cle = cleJoueur(joueur);
+    const ancienne = contexte.statistiques[cle] || {};
 
-    for (let i = melange.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [melange[i], melange[j]] = [melange[j], melange[i]];
-    }
+    const stats = {
+      ...STATS_VIDES,
+      ...ancienne
+    };
 
-    return melange.slice(0, Math.min(nombre, melange.length));
+    Object.entries(changements).forEach(([nom, valeur]) => {
+      stats[nom] = (Number(stats[nom]) || 0) + valeur;
+    });
+
+    stats.PTS = stats.B + stats.A;
+
+    contexte.statistiques[cle] = {
+      ...ancienne,
+      ...stats
+    };
   }
 
-  function genererStatistiquesMatch(
-    locaux,
-    visiteurs,
-    butsLocaux,
-    butsVisiteurs,
-    nomLocal,
-    nomVisiteur,
-    prolongation,
-    gardienLocal,
-    gardienVisiteur,
-    victoireLocale
-  ) {
-    const nouvelles = { ...statistiques };
+  function simulerMatchEquipes(idLocal, idVisiteur, contexte) {
+    const equipeLocale = teams.find((e) => e.id === idLocal);
+    const equipeVisiteuse = teams.find((e) => e.id === idVisiteur);
 
-    function modifier(joueur, changements) {
-      const cle = cleJoueur(joueur);
-      const ancienne = nouvelles[cle] || {};
+    if (!equipeLocale || !equipeVisiteuse) return null;
 
-      const stats = {
-        ...STATS_VIDES,
-        ...ancienne
-      };
+    const locaux = effectif.filter(
+      (j) => j.equipe === equipeLocale.name
+    );
 
-      Object.entries(changements).forEach(([nom, valeur]) => {
-        stats[nom] = (Number(stats[nom]) || 0) + valeur;
-      });
+    const visiteurs = effectif.filter(
+      (j) => j.equipe === equipeVisiteuse.name
+    );
 
-      stats.PTS = stats.B + stats.A;
+    const gardiensLocaux = locaux.filter(
+      (j) => positionType(j.pos) === "G"
+    );
 
-      nouvelles[cle] = {
-        ...ancienne,
-        ...stats
-      };
+    const gardiensVisiteurs = visiteurs.filter(
+      (j) => positionType(j.pos) === "G"
+    );
+
+    const gardienLocal = choisirGardienPartant(
+      equipeLocale.name,
+      gardiensLocaux,
+      contexte
+    );
+
+    const gardienVisiteur = choisirGardienPartant(
+      equipeVisiteuse.name,
+      gardiensVisiteurs,
+      contexte
+    );
+
+    let butsLocaux = Math.floor(Math.random() * 5);
+    let butsVisiteurs = Math.floor(Math.random() * 5);
+
+    const egalite = butsLocaux === butsVisiteurs;
+    const prolongation = egalite;
+
+    if (egalite) {
+      if (Math.random() < 0.5) butsLocaux++;
+      else butsVisiteurs++;
     }
+
+    const victoireLocale = butsLocaux > butsVisiteurs;
 
     const skatersLocaux = locaux.filter(
       (j) => positionType(j.pos) !== "G"
@@ -441,7 +562,7 @@ function App() {
     );
 
     [...skatersLocaux, ...skatersVisiteurs].forEach((j) => {
-      modifier(j, { MJ: 1 });
+      ajouterStatistique(contexte, j, { MJ: 1 });
     });
 
     const buteurs = [];
@@ -459,29 +580,32 @@ function App() {
         );
 
         const tirage = Math.random();
-
         const type =
           tirage < 0.2 ? "AN" :
           tirage < 0.27 ? "DN" : "REG";
 
-        modifier(buteur, {
+        ajouterStatistique(contexte, buteur, {
           B: 1,
           ...(type === "AN" ? { AN: 1 } : {}),
           ...(type === "DN" ? { DN: 1 } : {})
         });
 
-        passeurs.forEach((p) => modifier(p, { A: 1 }));
+        passeurs.forEach((p) => {
+          ajouterStatistique(contexte, p, { A: 1 });
+        });
 
         if (type !== "AN") {
           attaque.forEach((j) => {
-            if (j !== buteur) modifier(j, { plusMoins: 1 });
+            if (j !== buteur) {
+              ajouterStatistique(contexte, j, { plusMoins: 1 });
+            }
           });
 
           defense.forEach((j) => {
-            modifier(j, { plusMoins: -1 });
+            ajouterStatistique(contexte, j, { plusMoins: -1 });
           });
 
-          modifier(buteur, { plusMoins: 1 });
+          ajouterStatistique(contexte, buteur, { plusMoins: 1 });
         }
 
         buteurs.push({
@@ -497,26 +621,27 @@ function App() {
       skatersLocaux,
       skatersVisiteurs,
       butsLocaux,
-      nomLocal
+      equipeLocale.name
     );
 
     ajouterButs(
       skatersVisiteurs,
       skatersLocaux,
       butsVisiteurs,
-      nomVisiteur
+      equipeVisiteuse.name
     );
 
+    // Pénalités et bagarres.
     for (let i = 0; i < Math.floor(Math.random() * 5); i++) {
-      const equipe =
+      const attaque =
         Math.random() < 0.5 ? skatersLocaux : skatersVisiteurs;
 
-      if (!equipe.length) continue;
+      if (!attaque.length) continue;
 
       const joueur =
-        equipe[Math.floor(Math.random() * equipe.length)];
+        attaque[Math.floor(Math.random() * attaque.length)];
 
-      modifier(joueur, {
+      ajouterStatistique(contexte, joueur, {
         PUN: Math.random() < 0.8 ? 2 : 4
       });
     }
@@ -538,8 +663,8 @@ function App() {
           Math.floor(Math.random() * skatersVisiteurs.length)
         ];
 
-      modifier(j1, { BAG: 1, PUN: 5 });
-      modifier(j2, { BAG: 1, PUN: 5 });
+      ajouterStatistique(contexte, j1, { BAG: 1, PUN: 5 });
+      ajouterStatistique(contexte, j2, { BAG: 1, PUN: 5 });
 
       bagarre = {
         joueur1: j1.nom,
@@ -551,7 +676,7 @@ function App() {
       if (!gardien) return;
 
       const cle = cleJoueur(gardien);
-      const ancienne = nouvelles[cle] || {};
+      const ancienne = contexte.statistiques[cle] || {};
 
       const stats = {
         ...STATS_GARDIEN_VIDES,
@@ -569,16 +694,13 @@ function App() {
       if (resultat === "V") stats.V += 1;
       if (resultat === "D") stats.D += 1;
       if (resultat === "DP") stats.DP += 1;
-
       if (butsContre === 0) stats.SO += 1;
 
-      nouvelles[cle] = {
+      contexte.statistiques[cle] = {
         ...ancienne,
         gardien: stats
       };
     }
-
-    const victoireVisiteur = !victoireLocale;
 
     enregistrerGardien(
       gardienLocal,
@@ -589,170 +711,346 @@ function App() {
     enregistrerGardien(
       gardienVisiteur,
       butsLocaux,
-      victoireVisiteur ? "V" : prolongation ? "DP" : "D"
+      !victoireLocale ? "V" : prolongation ? "DP" : "D"
     );
 
-    return {
-      statistiques: nouvelles,
-      buteurs,
-      bagarre
-    };
-  }
-
-  function simulerMatch() {
-    const adversaires = teams.filter(
-      (e) => e.id !== equipeSelectionnee.id
-    );
-
-    if (!adversaires.length) return;
-
-    const adversaire =
-      adversaires[Math.floor(Math.random() * adversaires.length)];
-
-    const joueursAdverses = effectif.filter(
-      (j) => j.equipe === adversaire.name
-    );
-
-    const gardiensLocaux = joueursEquipe.filter(
-      (j) => positionType(j.pos) === "G"
-    );
-
-    const gardiensAdverses = joueursAdverses.filter(
-      (j) => positionType(j.pos) === "G"
-    );
-
-    const gardienLocal = choisirGardienPartant(
-      equipeSelectionnee.name,
-      gardiensLocaux,
-      fatigueGardiens,
-      dernierGardienDepart
-    );
-
-    const gardienAdverse = choisirGardienPartant(
-      adversaire.name,
-      gardiensAdverses,
-      fatigueGardiens,
-      dernierGardienDepart
-    );
-
-    let butsEquipe = Math.floor(Math.random() * 5) + 1;
-    let butsAdversaire = Math.floor(Math.random() * 5) + 1;
-
-    const egaliteAvantProlongation = butsEquipe === butsAdversaire;
-    const prolongation =
-      egaliteAvantProlongation && Math.random() < 0.3;
-
-    if (butsEquipe === butsAdversaire) {
-      if (Math.random() < 0.5) butsEquipe++;
-      else butsAdversaire++;
-    }
-
-    const victoire = butsEquipe > butsAdversaire;
-
-    const resultat = genererStatistiquesMatch(
-      joueursEquipe,
-      joueursAdverses,
-      butsEquipe,
-      butsAdversaire,
-      equipeSelectionnee.name,
-      adversaire.name,
-      prolongation,
-      gardienLocal,
-      gardienAdverse,
-      victoire
-    );
-
-    setStatistiques(resultat.statistiques);
-
-    const nouvelleFatigue = { ...fatigueGardiens };
-
-    [...gardiensLocaux, ...gardiensAdverses].forEach((gardien) => {
-      const cle = cleJoueur(gardien);
-
-      nouvelleFatigue[cle] = Math.max(
+    // Récupération et fatigue des gardiens.
+    [...gardiensLocaux, ...gardiensVisiteurs].forEach((g) => {
+      const cle = cleJoueur(g);
+      contexte.fatigue[cle] = Math.max(
         0,
-        (Number(nouvelleFatigue[cle]) || 0) - 12
+        (Number(contexte.fatigue[cle]) || 0) - 12
       );
     });
 
     if (gardienLocal) {
       const cle = cleJoueur(gardienLocal);
-      nouvelleFatigue[cle] =
-        Math.min(100, (nouvelleFatigue[cle] || 0) + 25);
+      contexte.fatigue[cle] = Math.min(
+        100,
+        (Number(contexte.fatigue[cle]) || 0) + 25
+      );
+      contexte.derniers[equipeLocale.name] = cle;
     }
 
-    if (gardienAdverse) {
-      const cle = cleJoueur(gardienAdverse);
-      nouvelleFatigue[cle] =
-        Math.min(100, (nouvelleFatigue[cle] || 0) + 25);
+    if (gardienVisiteur) {
+      const cle = cleJoueur(gardienVisiteur);
+      contexte.fatigue[cle] = Math.min(
+        100,
+        (Number(contexte.fatigue[cle]) || 0) + 25
+      );
+      contexte.derniers[equipeVisiteuse.name] = cle;
     }
 
-    setFatigueGardiens(nouvelleFatigue);
-
-    const nouveauxDerniersDeparts = {
-      ...dernierGardienDepart
-    };
-
-    if (gardienLocal) {
-      nouveauxDerniersDeparts[equipeSelectionnee.name] =
-        cleJoueur(gardienLocal);
-    }
-
-    if (gardienAdverse) {
-      nouveauxDerniersDeparts[adversaire.name] =
-        cleJoueur(gardienAdverse);
-    }
-
-    setDernierGardienDepart(nouveauxDerniersDeparts);
-
-    const match = {
+    return {
       id: Date.now() + Math.random(),
       saison,
-      equipe: equipeSelectionnee.name,
-      adversaire: adversaire.name,
-      butsEquipe,
-      butsAdversaire,
-      victoire,
+      equipe: equipeLocale.name,
+      adversaire: equipeVisiteuse.name,
+      idEquipe: idLocal,
+      idAdversaire: idVisiteur,
+      butsEquipe: butsLocaux,
+      butsAdversaire: butsVisiteurs,
+      victoire: victoireLocale,
       prolongation,
       gardienLocal: gardienLocal?.nom || "Aucun gardien",
-      gardienAdverse: gardienAdverse?.nom || "Aucun gardien",
-      buteurs: resultat.buteurs,
-      bagarre: resultat.bagarre
+      gardienAdverse: gardienVisiteur?.nom || "Aucun gardien",
+      buteurs,
+      bagarre
     };
+  }
 
-    setHistoriqueMatchs((anciens) => [match, ...anciens]);
+  function enregistrerResultatClassement(ancienClassement, match) {
+    const copie = ancienClassement.map((e) => ({ ...e }));
 
-    if (victoire) {
-      setVictoires((v) => v + 1);
-      setMessage(
-        `🏆 Victoire ! Gardien partant : ${gardienLocal?.nom || "Non disponible"}`
+    const local = copie.find((e) => e.id === match.idEquipe);
+    const visiteur = copie.find((e) => e.id === match.idAdversaire);
+
+    if (!local || !visiteur) return copie;
+
+    local.MJ++;
+    visiteur.MJ++;
+
+    local.BP += match.butsEquipe;
+    local.BC += match.butsAdversaire;
+    visiteur.BP += match.butsAdversaire;
+    visiteur.BC += match.butsEquipe;
+
+    if (match.victoire) {
+      local.V++;
+      local.PTS += 2;
+
+      if (match.prolongation) {
+        visiteur.DP++;
+        visiteur.PTS++;
+      } else {
+        visiteur.D++;
+      }
+    } else {
+      visiteur.V++;
+      visiteur.PTS += 2;
+
+      if (match.prolongation) {
+        local.DP++;
+        local.PTS++;
+      } else {
+        local.D++;
+      }
+    }
+
+    return copie;
+  }
+
+  function simulerJournee() {
+    if (phase !== "REGULIERE") return;
+
+    if (journee >= 84) {
+      setMessage("La saison régulière est terminée.");
+      return;
+    }
+
+    const contexte = creerContexteSimulation();
+    let nouveauClassement = classement;
+
+    const matchsDuJour = calendrier[journee];
+
+    matchsDuJour.forEach(([id1, id2]) => {
+      const match = simulerMatchEquipes(id1, id2, contexte);
+
+      if (!match) return;
+
+      contexte.matchs.push(match);
+      nouveauClassement = enregistrerResultatClassement(
+        nouveauClassement,
+        match
       );
-    } else if (prolongation) {
-      setDefaitesProlongation((d) => d + 1);
+    });
+
+    setStatistiques(contexte.statistiques);
+    setFatigueGardiens(contexte.fatigue);
+    setDernierGardienDepart(contexte.derniers);
+    setHistoriqueMatchs((anciens) => [
+      ...contexte.matchs.reverse(),
+      ...anciens
+    ]);
+
+    setClassement(nouveauClassement);
+    setJournee((j) => j + 1);
+
+    if (journee + 1 >= 84) {
+      const classementFinal = trierClassement(nouveauClassement);
+      const qualifies = classementFinal.slice(0, 16);
+
+      const nouvellesSeries = [];
+
+      for (let i = 0; i < 8; i++) {
+        nouvellesSeries.push(
+          creerSerie(
+            qualifies[i],
+            qualifies[15 - i],
+            i + 1
+          )
+        );
+      }
+
+      setClassement(classementFinal);
+      setSeries(nouvellesSeries);
+      setRondeSeries(1);
+      setPhase("SERIES");
+
       setMessage(
-        `Défaite en prolongation. Gardien partant : ${gardienLocal?.nom || "Non disponible"}`
+        "🏆 Les 84 matchs sont terminés ! Les 16 meilleures équipes accèdent aux séries."
       );
     } else {
-      setDefaites((d) => d + 1);
       setMessage(
-        `Défaite. Gardien partant : ${gardienLocal?.nom || "Non disponible"}`
+        `Journée ${journee + 1}/84 terminée : 16 matchs simulés.`
       );
     }
   }
 
-  function prochaineSaison() {
-    if (!window.confirm("Terminer la saison et avancer ?")) return;
+  // Une simulation fait jouer un match dans chaque série encore active.
+  function simulerJourneeSeries() {
+    if (phase !== "SERIES") return;
 
-    setEffectif((anciens) => developperJoueurs(anciens));
-    setSaison((s) => s + 1);
-    setVictoires(0);
-    setDefaites(0);
-    setDefaitesProlongation(0);
-    setFatigueGardiens({});
+    const contexte = creerContexteSimulation();
+    const nouvellesSeries = series.map((s) => ({ ...s }));
 
-    setMessage("Nouvelle saison commencée !");
+    nouvellesSeries.forEach((serie) => {
+      if (serie.terminee) return;
+
+      const equipe1 = teams.find((e) => e.id === serie.equipe1);
+      const equipe2 = teams.find((e) => e.id === serie.equipe2);
+
+      if (!equipe1 || !equipe2) return;
+
+      const match = simulerMatchEquipes(
+        equipe1.id,
+        equipe2.id,
+        contexte
+      );
+
+      if (!match) return;
+
+      // En séries, chaque match doit avoir un gagnant.
+      if (match.victoire) {
+        serie.victoires1++;
+      } else {
+        serie.victoires2++;
+      }
+
+      contexte.matchs.push({
+        ...match,
+        type: "SERIES",
+        ronde: rondeSeries
+      });
+
+      if (serie.victoires1 >= 4) {
+        serie.terminee = true;
+        serie.gagnant = serie.equipe1;
+      }
+
+      if (serie.victoires2 >= 4) {
+        serie.terminee = true;
+        serie.gagnant = serie.equipe2;
+      }
+    });
+
+    setStatistiques(contexte.statistiques);
+    setFatigueGardiens(contexte.fatigue);
+    setDernierGardienDepart(contexte.derniers);
+    setHistoriqueMatchs((anciens) => [
+      ...contexte.matchs.reverse(),
+      ...anciens
+    ]);
+
+    if (nouvellesSeries.every((s) => s.terminee)) {
+      if (rondeSeries === 4) {
+        const gagnant = nouvellesSeries[0]?.gagnant;
+        const equipeChampionne = teams.find((e) => e.id === gagnant);
+
+        setChampion(equipeChampionne?.name || "Équipe inconnue");
+        setPhase("REPECHAGE");
+
+        setMessage(
+          `🏆 ${equipeChampionne?.name || "Une équipe"} remporte la Coupe Stanley ! Le repêchage est maintenant disponible.`
+        );
+      } else {
+        const gagnants = nouvellesSeries.map((s) =>
+          teams.find((e) => e.id === s.gagnant)
+        ).filter(Boolean);
+
+        const prochaineRonde = [];
+
+        for (let i = 0; i < gagnants.length; i += 2) {
+          if (gagnants[i] && gagnants[i + 1]) {
+            prochaineRonde.push(
+              creerSerie(
+                {
+                  id: gagnants[i].id,
+                  equipe: gagnants[i].name
+                },
+                {
+                  id: gagnants[i + 1].id,
+                  equipe: gagnants[i + 1].name
+                },
+                i + 1
+              )
+            );
+          }
+        }
+
+        setSeries(prochaineRonde);
+        setRondeSeries((r) => r + 1);
+        setMessage(
+          `La ronde ${rondeSeries} est terminée. Place à la ronde ${rondeSeries + 1} !`
+        );
+      }
+    } else {
+      setSeries(nouvellesSeries);
+      setMessage("Journée de séries simulée !");
+    }
   }
 
+  // Repêchage de 7 rondes, 32 équipes, 224 choix.
+  function effectuerRepechage() {
+    if (phase !== "REPECHAGE") return;
+
+    if (!window.confirm("Effectuer le repêchage complet de 7 rondes ?")) {
+      return;
+    }
+
+    const classementInverse = trierClassement(classement).reverse();
+    const ordre = classementInverse.map((e) => e.id);
+
+    const prospects = [];
+    const nouveauxChoix = [];
+    const positions = ["C", "AG", "AD", "D", "G"];
+
+    for (let i = 1; i <= 224; i++) {
+      const ronde = Math.ceil(i / 32);
+
+      prospects.push({
+        id: `prospect-${saison}-${i}`,
+        nom: `Espoir ${saison}-${i}`,
+        equipe: "Repêchage",
+        pos: positions[Math.floor(Math.random() * positions.length)],
+        age: 18,
+        ovr: 58 + Math.floor(Math.random() * 13),
+        potentiel: 75 + Math.floor(Math.random() * 21),
+        salaire: 0.85,
+        photo: "",
+        numero: "",
+        contratDisponible: false,
+        finContrat: "Contrat recrue"
+      });
+
+      const equipeId = ordre[(i - 1) % 32];
+      const equipe = teams.find((e) => e.id === equipeId);
+
+      nouveauxChoix.push({
+        ronde,
+        choix: i,
+        equipe: equipe?.name || "Équipe inconnue",
+        prospect: prospects[i - 1].nom,
+        position: prospects[i - 1].pos
+      });
+
+      // Ajoute immédiatement le prospect à l'équipe qui le sélectionne.
+      prospects[i - 1].equipe = equipe?.name || "Équipe inconnue";
+    }
+
+    setEffectif((anciens) => [...anciens, ...prospects]);
+    setChoixRepêchage(nouveauxChoix);
+    setPhase("AGENTS_LIBRES");
+
+    setMessage(
+      "Le repêchage est terminé : 224 joueurs ont été sélectionnés. La période des agents libres commence."
+    );
+  }
+
+  function commencerNouvelleSaison() {
+    if (phase !== "AGENTS_LIBRES") return;
+
+    if (!window.confirm("Commencer la nouvelle saison ?")) return;
+
+    setEffectif((anciens) => developperJoueurs(anciens));
+
+    setSaison((s) => s + 1);
+    setPhase("REGULIERE");
+    setJournee(0);
+    setClassement(creerClassement());
+    setSeries([]);
+    setRondeSeries(1);
+    setChampion(null);
+
+    // Remise à zéro des statistiques de tous les joueurs et gardiens.
+    setStatistiques({});
+    setFatigueGardiens({});
+    setDernierGardienDepart({});
+
+    setVictoiresAnciennes();
+  }
+
+  // Échanges entre équipes.
   const nomEchange1 = teams.find(
     (e) => e.id === equipeEchange1
   )?.name;
@@ -814,6 +1112,7 @@ function App() {
     setMessage("Échange effectué !");
   }
 
+  // Agents libres.
   function signerAgent(agent) {
     const montant = Number(offres[agent.id]);
 
@@ -952,7 +1251,7 @@ function App() {
   }
 
   function afficherTableauGardiens(liste) {
-    const listeGardiens = liste.filter(
+    const gardiens = liste.filter(
       (j) => positionType(j.pos) === "G"
     );
 
@@ -974,7 +1273,7 @@ function App() {
           </thead>
 
           <tbody>
-            {listeGardiens.map((gardien) => {
+            {gardiens.map((gardien) => {
               const s = statsGardien(gardien);
               const cle = cleJoueur(gardien);
 
@@ -1024,10 +1323,6 @@ function App() {
       <section>
         <h2>📊 Statistiques NHL</h2>
 
-        <p>
-          Statistiques individuelles des joueurs et gardiens des 32 équipes.
-        </p>
-
         <select
           value={filtreStats}
           onChange={(e) => setFiltreStats(e.target.value)}
@@ -1063,11 +1358,6 @@ function App() {
             </div>
           );
         })}
-
-        <p style={{ color: "#a9c5df", fontSize: "12px" }}>
-          Les statistiques sont cumulatives dans ta partie.
-          Les performances sont simulées par le jeu.
-        </p>
       </section>
     );
   }
@@ -1087,13 +1377,8 @@ function App() {
               : "Défaite"}
         </p>
 
-        <p>
-          🥅 Gardien partant : {match.gardienLocal || "Non disponible"}
-        </p>
-
-        <p>
-          🥅 Gardien adverse : {match.gardienAdverse || "Non disponible"}
-        </p>
+        <p>🥅 Gardien partant : {match.gardienLocal}</p>
+        <p>🥅 Gardien adverse : {match.gardienAdverse}</p>
 
         <hr style={{ borderColor: "#34465c" }} />
 
@@ -1120,6 +1405,8 @@ function App() {
     );
   }
 
+  const classementTrie = trierClassement(classement);
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -1131,6 +1418,12 @@ function App() {
       <header style={{ textAlign: "center" }}>
         <h1>🏒 NHL GENERAL MANAGER 27</h1>
         <p>Saison {saison}-{String(saison + 1).slice(-2)}</p>
+        <p>
+          {phase === "REGULIERE" && "Saison régulière"}
+          {phase === "SERIES" && `Séries éliminatoires — Ronde ${rondeSeries}/4`}
+          {phase === "REPECHAGE" && "Repêchage"}
+          {phase === "AGENTS_LIBRES" && "Période des agents libres"}
+        </p>
 
         <button
           style={{ ...styleBouton, background: "#18834a" }}
@@ -1146,7 +1439,6 @@ function App() {
           📂 Charger
         </button>
 
-        {/* NOUVEAU BOUTON DE RÉINITIALISATION */}
         <button
           style={{ ...styleBouton, background: "#b83232" }}
           onClick={recommencerPartie}
@@ -1216,6 +1508,13 @@ function App() {
               ))}
             </select>
           </div>
+
+          <div style={styleCarte}>
+            <h3>Progression de la saison</h3>
+            <p>Journée : {journee}/84</p>
+            <p>Phase : {phase}</p>
+            <p>Équipes : {teams.length}</p>
+          </div>
         </section>
       )}
 
@@ -1236,9 +1535,31 @@ function App() {
             ))}
           </select>
 
-          {afficherSection("ATTAQUANTS", attaquants, "🏒")}
-          {afficherSection("DÉFENSEURS", defenseurs, "🛡️")}
-          {afficherSection("GARDIENS", gardiens, "🥅")}
+          {(() => {
+            const ordre = { C: 1, AG: 2, AD: 3, LW: 2, RW: 3 };
+            const attaquants = joueursEquipe
+              .filter((j) => positionType(j.pos) === "A")
+              .sort((a, b) =>
+                (ordre[String(a.pos).toUpperCase()] || 4) -
+                (ordre[String(b.pos).toUpperCase()] || 4)
+              );
+
+            const defenseurs = joueursEquipe.filter(
+              (j) => positionType(j.pos) === "D"
+            );
+
+            const gardiens = joueursEquipe.filter(
+              (j) => positionType(j.pos) === "G"
+            );
+
+            return (
+              <>
+                {afficherSection("ATTAQUANTS", attaquants, "🏒")}
+                {afficherSection("DÉFENSEURS", defenseurs, "🛡️")}
+                {afficherSection("GARDIENS", gardiens, "🥅")}
+              </>
+            );
+          })()}
         </section>
       )}
 
@@ -1353,7 +1674,7 @@ function App() {
           {agentsLibres.map((agent) => (
             <div key={agent.id} style={styleCarte}>
               <h3>{agent.nom}</h3>
-              <p>{agent.position} · {agent.age} ans</p>
+              <p>{agent.position || agent.pos} · {agent.age} ans</p>
               <p>Ancienne équipe : {agent.ancienneEquipe}</p>
               <p>OVR : {agent.ovr} · Potentiel : {agent.potentiel}</p>
 
@@ -1394,23 +1715,153 @@ function App() {
         <section>
           <h2>Saison {saison}-{String(saison + 1).slice(-2)}</h2>
 
-          <div style={styleCarte}>
-            <p>Victoires : {victoires}</p>
-            <p>Défaites : {defaites}</p>
-            <p>Défaites en prolongation : {defaitesProlongation}</p>
-            <p>Points : {victoires * 2 + defaitesProlongation}</p>
+          {phase === "REGULIERE" && (
+            <div style={styleCarte}>
+              <h3>🏒 Saison régulière</h3>
+              <p>Journée : {journee}/84</p>
+              <p>Matchs simulés : {journee * 16}/1344</p>
 
-            <button style={styleBouton} onClick={simulerMatch}>
-              🏒 Simuler un match
-            </button>
+              <button
+                style={{ ...styleBouton, background: "#18834a" }}
+                onClick={simulerJournee}
+                disabled={chargement || journee >= 84}
+              >
+                🏒 Simuler la journée (16 matchs)
+              </button>
+            </div>
+          )}
+
+          {phase === "SERIES" && (
+            <div style={styleCarte}>
+              <h3>🏆 Séries éliminatoires</h3>
+              <p>Ronde {rondeSeries}/4</p>
+              <p>Chaque série se joue au meilleur de 7 matchs.</p>
+
+              {series.map((s) => (
+                <div
+                  key={s.id}
+                  style={{
+                    padding: "10px",
+                    borderBottom: "1px solid #34465c"
+                  }}
+                >
+                  <strong>{s.nom1}</strong> {s.victoires1} - {s.victoires2}{" "}
+                  <strong>{s.nom2}</strong>
+                  {s.terminee && <p>Gagnant : {s.gagnant}</p>}
+                </div>
+              ))}
+
+              <button
+                style={{ ...styleBouton, background: "#18834a" }}
+                onClick={simulerJourneeSeries}
+              >
+                🏒 Simuler les matchs des séries
+              </button>
+            </div>
+          )}
+
+          {phase === "REPECHAGE" && (
+            <div style={styleCarte}>
+              <h3>🏆 Champion : {champion}</h3>
+              <h3>Repêchage NHL</h3>
+              <p>7 rondes · 32 équipes · 224 choix.</p>
+
+              <button
+                style={{ ...styleBouton, background: "#18834a" }}
+                onClick={effectuerRepechage}
+              >
+                Effectuer le repêchage complet
+              </button>
+            </div>
+          )}
+
+          {phase === "AGENTS_LIBRES" && (
+            <div style={styleCarte}>
+              <h3>📋 Période des agents libres</h3>
+              <p>
+                Tu peux signer des joueurs dans l'onglet Agents libres.
+              </p>
+
+              <button
+                style={{ ...styleBouton, background: "#18834a" }}
+                onClick={commencerNouvelleSaison}
+              >
+                Commencer la nouvelle saison
+              </button>
+            </div>
+          )}
+
+          <h3>📊 Classement général</h3>
+
+          <div style={{ overflowX: "auto", ...styleCarte }}>
+            <table style={{
+              width: "100%",
+              minWidth: "650px",
+              borderCollapse: "collapse"
+            }}>
+              <thead>
+                <tr>
+                  {["#", "Équipe", "MJ", "V", "D", "DP", "PTS", "BP", "BC"].map((t) => (
+                    <th key={t} style={{ padding: "8px", background: "#26394e" }}>
+                      {t}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {classementTrie.map((e, i) => (
+                  <tr
+                    key={e.id}
+                    style={{
+                      borderBottom: "1px solid #34465c",
+                      background: i < 16 ? "#173c31" : "transparent"
+                    }}
+                  >
+                    <td align="center">{i + 1}</td>
+                    <td style={{ padding: "8px" }}>{e.equipe}</td>
+                    <td align="center">{e.MJ}</td>
+                    <td align="center">{e.V}</td>
+                    <td align="center">{e.D}</td>
+                    <td align="center">{e.DP}</td>
+                    <td align="center"><strong>{e.PTS}</strong></td>
+                    <td align="center">{e.BP}</td>
+                    <td align="center">{e.BC}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <button
-            style={{ ...styleBouton, background: "#18834a" }}
-            onClick={prochaineSaison}
-          >
-            Terminer la saison et avancer
-          </button>
+          {choixRepêchage.length > 0 && (
+            <>
+              <h3>📋 Résultats du repêchage</h3>
+              <div style={{ overflowX: "auto", ...styleCarte }}>
+                <table style={{ width: "100%", minWidth: "500px" }}>
+                  <thead>
+                    <tr>
+                      <th>Choix</th>
+                      <th>Ronde</th>
+                      <th>Équipe</th>
+                      <th>Prospect</th>
+                      <th>Position</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {choixRepêchage.map((c) => (
+                      <tr key={c.choix}>
+                        <td>{c.choix}</td>
+                        <td>{c.ronde}</td>
+                        <td>{c.equipe}</td>
+                        <td>{c.prospect}</td>
+                        <td>{c.position}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <h3>Historique des matchs</h3>
 
