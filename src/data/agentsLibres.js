@@ -1,10 +1,12 @@
 
 const creerAgent = (nom, ancienneEquipe, statut = "UFA") => ({
-  id: "fa-" + nom
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-"),
+  id:
+    "fa-" +
+    nom
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-"),
 
   nom,
   position: "À déterminer",
@@ -19,7 +21,6 @@ const creerAgent = (nom, ancienneEquipe, statut = "UFA") => ({
 });
 
 export const AGENTS_LIBRES_DEPART = [
-
   // ANAHEIM DUCKS
   creerAgent("Petr Mrazek", "Anaheim"),
   creerAgent("Jan Mysak", "Anaheim"),
@@ -158,3 +159,59 @@ export const AGENTS_LIBRES_DEPART = [
   // AUTRES RFA
   creerAgent("Vyacheslav Buteyets", "Anaheim", "RFA")
 ];
+
+function normaliserNomPhoto(nom) {
+  return String(nom || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+async function chercherPhotoAgent(agent) {
+  try {
+    const url =
+      "https://search.d3.nhle.com/api/v1/search/player" +
+      "?culture=en-us&limit=10&q=" +
+      encodeURIComponent(agent.nom);
+
+    const recherche = await fetch(url);
+
+    if (!recherche.ok) return agent;
+
+    const joueurs = await recherche.json();
+
+    const trouve = joueurs.find(
+      (joueur) =>
+        normaliserNomPhoto(joueur.name) ===
+        normaliserNomPhoto(agent.nom)
+    );
+
+    if (!trouve?.playerId) return agent;
+
+    const profil = await fetch(
+      `https://api-web.nhle.com/v1/player/${trouve.playerId}/landing`
+    );
+
+    if (!profil.ok) return agent;
+
+    const donnees = await profil.json();
+
+    return {
+      ...agent,
+      idNhl: trouve.playerId,
+      photo: donnees.headshot || ""
+    };
+  } catch (erreur) {
+    console.warn("Photo indisponible pour :", agent.nom);
+    return agent;
+  }
+}
+
+export async function chargerPhotosAgentsLibres(agents) {
+  const resultat = await Promise.all(
+    agents.map((agent) => chercherPhotoAgent(agent))
+  );
+
+  return resultat;
+}
